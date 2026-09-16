@@ -1,0 +1,11 @@
+=== 恢复前状态快照 ===
+时间: 2026-09-13 15:16:28
+master PID: 16684
+--- 磁盘配置的 zone key ---
+limit_req_zone $limit_key zone=general:10m rate=10r/s;
+--- error.log 中的 emerg ---
+2026/09/13 15:15:52 [emerg] 16684#0: limit_req "general" uses the "$limit_key" key while previously it used the "$binary_remote_addr" key
+2026/09/13 15:15:54 [emerg] 16684#0: limit_req "general" uses the "$limit_key" key while previously it used the "$binary_remote_addr" key
+2026/09/13 15:16:09 [emerg] 16684#0: limit_req "general" uses the "$limit_key" key while previously it used the "$binary_remote_addr" key
+--- 站点响应 ---
+HTTP 200
