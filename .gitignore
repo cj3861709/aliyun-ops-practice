@@ -45,3 +45,8 @@ quests/.state/
 *.bak-*
 __pycache__/
 *.pyc
+
+# ── 5. IDE 配置（个人偏好，不应共享）────────────────────────────────
+.idea/
+.vscode/
+*.iml
