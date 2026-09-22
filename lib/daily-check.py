@@ -75,6 +75,12 @@ ALERT_KEEP_DAYS = 30         # 告警文件保留天数
 
 CMD_TIMEOUT = 5              # 单条命令超时（秒）
 
+# MySQL/MariaDB 检查
+DB_ENABLED = True
+DB_CHECK_SCRIPT = "/root/ops-lab/bin/db/check-mariadb.sh"
+DB_BACKUP_DIR = "/root/ops-lab/logs/db-backup"
+DB_BACKUP_MAX_AGE_H = 48     # 备份超过此年龄则告警
+
 # ==============================================================================
 # 结果收集
 # ==============================================================================
@@ -312,6 +318,78 @@ def check_disk_detail(rep):
             biggest[0], biggest[1], biggest[2]))
 
 
+
+
+def check_mariadb(rep):
+    """
+    数据库健康检查
+
+    调用 bin/db/check-mariadb.sh（它做 8 项检查），
+    然后提取关键信息汇总到巡检报告里。
+
+    为什么单独封装而不是重写检查逻辑：
+      脚本已经过测试，且有独立的退出码语义。
+      巡检只负责汇总和告警，不重复实现。
+    """
+    if not DB_ENABLED:
+        return
+
+    if not os.path.isfile(DB_CHECK_SCRIPT):
+        rep.add('WARN', '数据库', '检查脚本不存在: %s' % DB_CHECK_SCRIPT)
+        return
+
+    rc, out, err = run_cmd(['bash', DB_CHECK_SCRIPT], timeout=30)
+
+    # 从输出里提取关键行
+    def grab(pattern):
+        m = re.search(pattern, out)
+        return m.group(1).strip() if m else None
+
+    version = grab(r'版本:\s*(\S+)')
+    memory = grab(r'(\d+\.\d+MiB / \d+MiB)')
+    binding = grab(r'(127\.0\.0\.1:3306|0\.0\.0\.0:3306)')
+
+    # 用退出码判定总体状态
+    if rc == 0:
+        detail = []
+        if version:
+            detail.append(version)
+        if memory:
+            detail.append(memory)
+        rep.add('OK', '数据库', '运行正常' + ('（%s）' % '，'.join(detail) if detail else ''))
+    elif rc == 1:
+        rep.add('WARN', '数据库', '有警告项，详见 %s' % DB_CHECK_SCRIPT)
+    else:
+        # 提取失败项
+        fails = re.findall(r'❌\s*([^\n]+)', out)
+        msg = '检查失败'
+        if fails:
+            msg += '：' + '；'.join(f.strip() for f in fails[:3])
+        rep.add('CRIT', '数据库', msg)
+
+    # 安全项：端口必须只绑本机
+    if binding and '0.0.0.0' in binding:
+        rep.add('CRIT', '数据库', '端口暴露到公网（%s），必须修正' % binding)
+
+    # 备份时效
+    if os.path.isdir(DB_BACKUP_DIR):
+        backups = [os.path.join(DB_BACKUP_DIR, f)
+                   for f in os.listdir(DB_BACKUP_DIR) if f.endswith('.sql')]
+        if not backups:
+            rep.add('WARN', '数据库备份', '从未备份')
+        else:
+            latest = max(backups, key=os.path.getmtime)
+            age_h = (time.time() - os.path.getmtime(latest)) / 3600
+            size_kb = os.path.getsize(latest) / 1024
+            if age_h > DB_BACKUP_MAX_AGE_H:
+                rep.add('WARN', '数据库备份', '最近备份已 %.0f 小时（阈值 %d 小时）' % (
+                    age_h, DB_BACKUP_MAX_AGE_H))
+            else:
+                rep.add('OK', '数据库备份', '%.0f 小时前（%.0f KB）' % (age_h, size_kb))
+    else:
+        rep.add('WARN', '数据库备份', '备份目录不存在')
+
+
 # ==============================================================================
 # 输出与归档
 # ==============================================================================
@@ -448,6 +526,7 @@ def main():
     check_memory(rep)
     check_load(rep)
     check_traffic(rep)
+    check_mariadb(rep)
     check_disk_detail(rep)
 
     text = format_report(rep, verbose=verbose)
