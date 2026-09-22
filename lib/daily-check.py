@@ -58,7 +58,7 @@ MEM_MIN_MB = 200             # 最低可用内存 MB
 LOAD_THRESHOLD = 4.0         # 系统负载（2 核机器）
 
 # 需要监控的服务
-WATCHED_SERVICES = ["nginx", "sshd", "fail2ban", "crond", "quest02"]
+WATCHED_SERVICES = ["nginx", "sshd", "fail2ban", "crond", "quest02", "tomcat"]
 
 # 心跳日志
 HEARTBEAT_LOG = "/var/log/quest02.log"
@@ -390,6 +390,41 @@ def check_mariadb(rep):
         rep.add('WARN', '数据库备份', '备份目录不存在')
 
 
+
+
+def check_tomcat_proxy(rep):
+    """
+    检查 nginx → Tomcat 的代理链路
+
+    为什么单独检查：
+      服务列表里有 tomcat 只能验证「进程活着」，
+      但代理链路可能因为 upstream 配置、端口变更等原因失效。
+      必须实际发请求验证「端到端可用」。
+    """
+    if not os.path.isfile("/etc/nginx/conf.d/tomcat-proxy.conf"):
+        return
+
+    # 1. Tomcat 本身
+    rc, out, err = run_cmd(["curl", "-s", "-o", "/dev/null",
+                            "-w", "%{http_code}", "--max-time", "5",
+                            "http://127.0.0.1:8082/"])
+    tcode = out.strip()
+
+    # 2. 经 nginx 代理
+    rc2, out2, err2 = run_cmd(["curl", "-s", "-o", "/dev/null",
+                               "-w", "%{http_code}", "--max-time", "5",
+                               "http://127.0.0.1:8083/app/"])
+    pcode = out2.strip()
+
+    if tcode == "200" and pcode == "200":
+        rep.add('OK', 'Tomcat代理', '直连 %s / 代理 %s' % (tcode, pcode))
+    elif tcode != "200":
+        rep.add('CRIT', 'Tomcat代理', 'Tomcat 直连返回 %s' % tcode)
+    else:
+        rep.add('CRIT', 'Tomcat代理', '代理返回 %s（直连正常）' % pcode)
+        print("     → 检查: nginx -t ; tail /var/log/nginx/error.log")
+
+
 # ==============================================================================
 # 输出与归档
 # ==============================================================================
@@ -527,6 +562,7 @@ def main():
     check_load(rep)
     check_traffic(rep)
     check_mariadb(rep)
+    check_tomcat_proxy(rep)
     check_disk_detail(rep)
 
     text = format_report(rep, verbose=verbose)
