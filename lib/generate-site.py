@@ -121,6 +121,12 @@ padding:13px 17px;flex:1;min-width:118px}
 .pager-link{text-decoration:none}
 .pager-disabled{color:#c3cbd6}
 .kbd-hint{color:var(--muted);font-size:.78rem;text-align:center;margin-top:26px}
+.notice{margin:22px 0;padding:16px 20px;border-radius:9px;background:var(--card);border-left:3px solid var(--line)}
+.notice strong{display:block;margin-bottom:8px;font-size:.95rem}
+.notice p{margin:8px 0;font-size:.9rem;color:var(--muted);line-height:1.7}
+.notice p:last-child{margin-bottom:0}
+.notice-info{border-left-color:#7ba7d4}
+.notice a{text-decoration:none;border-bottom:1px solid currentColor}
 @media(max-width:600px){.pager{flex-wrap:wrap;gap:8px}.pager-side{flex:1 1 40%}.pager-mid{order:-1;flex:1 1 100%}}
 @media(max-width:600px){h1{font-size:1.42rem}header.site .wrap{gap:8px}
 nav.site{margin-left:0;width:100%}.wrap{padding:0 16px}}
@@ -287,6 +293,19 @@ def build_home(pms, journals=None):
 发布流程、回滚机制、崩溃自愈、流量防护、监控告警，
 以及每一项能力的<strong>验证证据</strong>。</p>
 
+<h2>两部分内容</h2>
+<div class="card">
+<h3><a href="journal.html">我的手记</a></h3>
+<p>我自己动手做过的实操记录 —— 从部署静态页面、用 systemd 托管服务、
+排查静默失效故障，到用 Python 写日志分析与探活脚本。
+每篇包含真实命令、实际输出、遇到的错误与修复过程。</p>
+</div>
+<div class="card">
+<h3><a href="postmortem.html">参考复盘</a></h3>
+<p>搭建本环境过程中产生的技术记录，涵盖 nginx、systemd、cron、
+安全加固等主题。按标准复盘结构写成，作为写作样例参考。</p>
+</div>
+
 <h2>核心能力</h2>
 <div class="card">
 <h3>原子发布与零停机</h3>
@@ -416,13 +435,31 @@ def build_postmortem_index(pms):
 </div>""".format(num=p["num"], slug=esc(p["slug"]),
                  title=esc(p["title"]), tag=severity_tag(meta), rows=rows))
 
-    body = """<h1>故障复盘库</h1>
-<p class="lede">每一篇都是真实踩过的坑，包含完整的排查路径与验证方法。
-特别地，其中两篇记录了<strong>"我判断错了然后纠正"</strong>的过程——
-这比一份只写成功结果的记录更有价值。</p>
+    body = """<h1>参考复盘</h1>
+<p class="lede">这 8 篇是在搭建本项目过程中产生的技术记录，
+涵盖 nginx 配置、systemd 服务管理、cron 陷阱、安全加固等主题。
+每篇包含完整的现象描述、排查路径与验证方法。</p>
+
+<div class="notice">
+<strong>关于这部分的定位</strong>
+<p>这些复盘记录的是<strong>环境搭建与调试过程中出现的技术问题</strong>，
+作为复盘写作的参考样例保留在这里。</p>
+<p>我自己的实操记录在 <a href="journal.html">我的手记</a> 中——
+那里记录的是我亲手执行的部署、排障与脚本开发过程。</p>
+</div>
+
+<div class="notice notice-info">
+<strong>为什么保留这些样例</strong>
+<p>一份完整的复盘应该包含：现象、排查过程、根因、修复、验证、预防。
+这 8 篇按这个结构写成，可以作为写作模板参考。</p>
+<p>其中有两篇记录了<strong>"先判断错误、后纠正"</strong>的过程——
+这类内容比只写成功结果的记录更有参考价值，因为
+<strong>排查过程中走弯路是常态</strong>。</p>
+</div>
+
 {cards}""".format(cards="".join(cards))
-    return page("故障复盘库 · " + SITE_TITLE, body, active="pm",
-                description="运维故障复盘：nginx 自愈策略、配置校验、cron 陷阱")
+    return page("参考复盘 · " + SITE_TITLE, body, active="pm",
+                description="运维技术记录：nginx 配置、systemd 管理、安全加固")
 
 
 def build_postmortem_page(p):
