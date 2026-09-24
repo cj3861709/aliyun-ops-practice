@@ -40,6 +40,10 @@ BUILD_DIR = os.path.join(LAB, "site", "build")
 SITE_TITLE = "运维练习站"
 SITE_SUBTITLE = "阿里云 ECS 2C2G · 从零搭建与运维实录"
 
+# ICP 备案号（法律要求显示在网站底部）
+ICP_NUMBER = "粤ICP备2026144293号-1"
+ICP_URL = "https://beian.miit.gov.cn/"
+
 # ---------------------------------------------------------------------------
 # 样式：内联到每个页面。控制在 ~3KB 内，兼顾美观与体积。
 # ---------------------------------------------------------------------------
@@ -127,6 +131,9 @@ padding:13px 17px;flex:1;min-width:118px}
 .notice p:last-child{margin-bottom:0}
 .notice-info{border-left-color:#7ba7d4}
 .notice a{text-decoration:none;border-bottom:1px solid currentColor}
+.filing{margin-top:10px;font-size:.8rem}
+.filing a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
+.filing a:hover{border-bottom-color:currentColor}
 @media(max-width:600px){.pager{flex-wrap:wrap;gap:8px}.pager-side{flex:1 1 40%}.pager-mid{order:-1;flex:1 1 100%}}
 @media(max-width:600px){h1{font-size:1.42rem}header.site .wrap{gap:8px}
 nav.site{margin-left:0;width:100%}.wrap{padding:0 16px}}
@@ -187,13 +194,17 @@ def page(title, body, rel_root="", active="", description=""):
 <footer class="site"><div class="wrap">
 {site} · 部署于阿里云 ECS 2C2G（Alibaba Cloud Linux 3 + nginx + systemd）<br>
 本站由自研 Python 静态生成器构建，零第三方依赖。
+<div class="filing">
+<a href="{icp_url}" target="_blank" rel="noopener noreferrer">{icp}</a>
+</div>
 </div></footer>
 <script>{js}</script>
 </body>
 </html>
 """.format(title=esc(title), desc=esc(description), css=CSS,
            root=rel_root, site=esc(SITE_TITLE), sub=esc(SITE_SUBTITLE),
-           nav=navhtml, body=body, js=PAGER_JS)
+           nav=navhtml, body=body, js=PAGER_JS,
+           icp=ICP_NUMBER, icp_url=ICP_URL)
 
 
 def load_journals():

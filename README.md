@@ -15,7 +15,7 @@
 ├─ 静态站点（nginx）
 │   ├─ 原子发布：不可变发布物 + 符号链接切换，零停机
 │   ├─ 秒级回滚：版本目录不覆盖，回滚只需切软链接
-│   └─ 在线访问：http://47.104.86.141:8080/
+│   └─ 在线访问：https://myzhiwei.xyz/
 │
 ├─ 服务管理（systemd）
 │   ├─ 自建心跳服务（非 root 运行 + 崩溃自愈）
@@ -277,9 +277,9 @@ limit_conn_status 429;
 
 ## 相关文档
 
-- **我的手记**：http://47.104.86.141:8080/journal.html
+- **我的手记**：https://myzhiwei.xyz/journal.html
   （6 篇实操记录：部署、systemd、故障排查、Python 脚本、日志分析、Docker/数据库）
-- **参考复盘**：http://47.104.86.141:8080/postmortem.html
+- **参考复盘**：https://myzhiwei.xyz/postmortem.html
   （8 篇技术记录：nginx、systemd、cron、安全加固）
 - **运维命令速查**：`docs/运维命令速查.md`
 
