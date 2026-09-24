@@ -569,7 +569,7 @@ logs/alerts/                    告警记录</code></pre>
 <tr><th>选择</th><th>理由</th></tr>
 <tr><td>nginx 直跑静态文件</td><td>内存 14.8 MB；Node/Python 后端起步 50–100 MB</td></tr>
 <tr><td>不用 Docker 跑网站</td><td>多一层 overlayfs 与网络命名空间开销，2 GB 内存要留给其他练习</td></tr>
-<tr><td>不用宝塔面板</td><td>掩盖底层原理，面试说不清它改了什么</td></tr>
+<tr><td>不用宝塔面板</td><td>本项目目的是理解各组件的手动配置过程。面板自动生成的配置不透明，出问题时需先弄清它的生成逻辑才能定位；这类工具更适合快速建站场景，与练习目的不同</td></tr>
 <tr><td>自研 Markdown 转换器</td><td>服务器软件越少攻击面越小；且零依赖可审计</td></tr>
 <tr><td>CSS 内联进 HTML</td><td>省一次 HTTP 请求，弱网下体感明显，也少一次被限流的可能</td></tr>
 </table>
