@@ -289,7 +289,7 @@ limit_conn_status 429;
 
 ```bash
 # 克隆
-git clone git@github.com:cj3861709/aliyun-ops-practice.git
+git clone git@github.com:<用户名>/<仓库名>.git
 cd aliyun-ops-practice
 
 # 凭据配置（不进仓库，需手动创建）
