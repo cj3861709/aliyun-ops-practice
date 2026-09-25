@@ -212,8 +212,12 @@ print("\n── 7. 导航高亮检查 ──")
 # 但品牌名和面包屑又正常，所以肉眼很容易漏掉。
 #
 # 每个页面必须恰好高亮 1 项，且高亮的那项要和页面身份相符。
+BRANCH_NAV_LABELS = ("运维首页", "我的手记", "参考复盘", "运维体系")
+
+# 首页（工作台）不在这张表里：它不对应任何一章，也不该高亮任何一项。
+# 旧版这里写着 "index.html": "运维首页" —— 等于把"首页套用分支章节导航"
+# 这个错误本身写成了正确预期，所以 22/22 全绿也照样放行。
 EXPECT_ON = {
-    "index.html": "运维首页",
     "ops/index.html": "运维首页",
     "ops/journal.html": "我的手记",
     "ops/postmortem.html": "参考复盘",
@@ -240,7 +244,36 @@ for f in sorted(html_files):
         bad("%s 找不到主导航" % rel)
         nav_bad += 1
         continue
-    on = re.findall(r'<a href="[^"]*" class="on">([^<]*)</a>', m.group(1))
+    navhtml = m.group(1)
+    labels = re.findall(r'>([^<>]+)</a>', navhtml)
+    on = re.findall(r'<a href="[^"]*" class="on">([^<]*)</a>', navhtml)
+
+    # 层级检查：章节导航只能出现在分支内部。
+    # 教训（第 12 类：结构分成了两层，验证规则只按一层写）——
+    # 首页曾经直接套用分支的章节导航，而 EXPECT_ON 又把它写成预期，
+    # 于是全绿放行。现在改成从层级上判：工作台的导航里不得出现任何章节项。
+    if rel == "index.html":
+        leaked = [x for x in labels if x in BRANCH_NAV_LABELS]
+        if leaked:
+            bad("index.html（工作台）出现了分支内的章节导航：%s" % ",".join(leaked))
+            nav_bad += 1
+            continue
+        if not labels:
+            bad("index.html（工作台）的导航为空，找不到项目入口")
+            nav_bad += 1
+            continue
+        if on:
+            bad("index.html（工作台）的导航不应高亮任何一项，实为：%s"
+                % ",".join(on))
+            nav_bad += 1
+        continue
+
+    missing = [x for x in BRANCH_NAV_LABELS if x not in labels]
+    if missing:
+        bad("%s 缺少章节导航项：%s" % (rel, ",".join(missing)))
+        nav_bad += 1
+        continue
+
     if len(on) != 1:
         bad("%s 导航高亮 %d 项（应恰好 1 项）：%s"
             % (rel, len(on), ",".join(on) if on else "无"))
@@ -252,7 +285,8 @@ for f in sorted(html_files):
         nav_bad += 1
 
 if nav_bad == 0:
-    ok("全部 %d 个页面恰好高亮 1 项导航，且与页面身份相符" % len(html_files))
+    ok("导航层级正确：分支内 %d 个页面各高亮 1 项，工作台不高亮任何一项"
+       % (len(html_files) - 1))
 
 # ---- 主题覆盖 ----
 print("\n── 8. 主题覆盖检查 ──")

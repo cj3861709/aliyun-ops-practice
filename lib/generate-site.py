@@ -1375,22 +1375,39 @@ def esc(s):
              .replace(">", "&gt;").replace('"', "&quot;"))
 
 
-def page(title, body, rel_root="", active="", description="", style="ops-dark",
-         nav_active=None):
-    """渲染一个完整页面。rel_root 用于子目录页面回指根。"""
-    # 导航分两套：首页（项目导航）与运维分支（章节导航 + 面包屑）
-    nav = [
-        ("index.html", "运维首页", "home"),
-        ("journal.html", "我的手记", "journal"),
-        ("postmortem.html", "参考复盘", "pm"),
-        ("system.html", "运维体系", "ops"),
-    ]
+# 首页（项目工作台）的导航：列"有哪些项目"，每条指向该项目的分支入口。
+# 与分支内的章节导航是两套东西，不能混用 —— 见 page() 里的说明。
+# 以后新增项目，在这里加一条即可。
+PROJECT_NAV = [
+    (OPS_SUBDIR + "/", "运维实践"),
+]
 
+
+def page(title, body, rel_root="", active="", description="", style="ops-dark",
+         nav_active=None, nav_mode="branch"):
+    """渲染一个完整页面。rel_root 用于子目录页面回指根。"""
+    # 导航分两套，不能混用：
+    #   nav_mode="branch"  —— 章节导航（运维首页/我的手记/参考复盘/运维体系），
+    #                         列的是"这个分支里有什么"，只出现在分支内部；
+    #   nav_mode="project" —— 项目导航，列的是"有哪些项目"，
+    #                         只出现在首页（工作台，它正是分支的上一层）。
+    if nav_mode == "project":
+        nav = [(href, label, "") for href, label in PROJECT_NAV]
+    else:
+        nav = [
+            (OPS_SUBDIR + "/index.html", "运维首页", "home"),
+            (OPS_SUBDIR + "/journal.html", "我的手记", "journal"),
+            (OPS_SUBDIR + "/postmortem.html", "参考复盘", "pm"),
+            (OPS_SUBDIR + "/system.html", "运维体系", "ops"),
+        ]
+
+    # nav 里存的是"相对站点根"的路径，渲染时统一加上 rel_root。
+    # key 为空表示该项永不当前态（项目导航在首页上不该有当前项）。
     navhtml = "".join(
-        '<a href="%s%s%s"%s>%s</a>' % (
-            rel_root, OPS_SUBDIR + "/", href,
-            ' class="on"' if key == (nav_active if nav_active is not None
-                                      else active) else "", label)
+        '<a href="%s%s"%s>%s</a>' % (
+            rel_root, href,
+            ' class="on"' if key and key == (nav_active if nav_active is not None
+                                             else active) else "", label)
         for href, label, key in nav)
 
     # 品牌名：首页只显示站名；分支内显示「站名 ‹ 分支名」
@@ -1601,6 +1618,7 @@ def build_home(pms, journals=None):
 </section>""".format(cards="".join(projects))
 
     return page("项目工作台", body, active="home", style="anime",
+                nav_mode="project",
                 description="个人项目工作台 —— 记录长期在做的项目与实践过程")
 
 
