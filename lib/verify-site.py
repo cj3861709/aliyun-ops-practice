@@ -118,7 +118,7 @@ for f in html_files:
     text = re.sub(r"<style[^>]*>.*?</style>", "", content, flags=re.S)
     text = re.sub(r"<[^>]+>", "", text)
     text = re.sub(r"\s+", " ", text).strip()
-    if rel.startswith("postmortem/"):
+    if rel.startswith("ops/postmortem/"):
         if len(text) > 1500:
             ok("%s 正文 %d 字符" % (rel, len(text)))
         else:
@@ -127,19 +127,19 @@ for f in html_files:
 # ---- 关键内容抽查 ----
 print("\n── 5. 关键内容抽查 ──")
 checks = [
-    ("postmortem/001-nginx-restart-policy.html", "Restart=always",
+    ("ops/postmortem/001-nginx-restart-policy.html", "Restart=always",
      "复盘#001 含修复配置"),
-    ("postmortem/001-nginx-restart-policy.html", "SIGKILL",
+    ("ops/postmortem/001-nginx-restart-policy.html", "SIGKILL",
      "复盘#001 含验证方法"),
-    ("postmortem/002-nginx-config-validate.html", "unknown directive",
+    ("ops/postmortem/002-nginx-config-validate.html", "unknown directive",
      "复盘#002 含真实报错"),
-    ("postmortem/003-cron-percent-truncation.html", "对照实验",
+    ("ops/postmortem/003-cron-percent-truncation.html", "对照实验",
      "复盘#003 含实验方法"),
-    ("index.html", "25,315", "首页含零停机实测数字"),
-    ("index.html", "1.11", "首页含回滚耗时"),
-    ("index.html", "11,547", "首页含限流拦截数"),
-    ("ops.html", "20 GB", "运维页含额度依据"),
-    ("ops.html", "mv -T", "运维页解释原子切换"),
+    ("ops/index.html", "25,315", "首页含零停机实测数字"),
+    ("ops/index.html", "1.11", "首页含回滚耗时"),
+    ("ops/index.html", "11,547", "首页含限流拦截数"),
+    ("ops/system.html", "20 GB", "运维页含额度依据"),
+    ("ops/system.html", "mv -T", "运维页解释原子切换"),
 ]
 for rel, needle, desc in checks:
     path = os.path.join(BUILD, rel)
@@ -162,7 +162,22 @@ ALLOWED = ["h1","h2","h3","h4","h5","h6","p","ul","ol","li","table","thead",
            "tbody","tr","th","td","pre","code","blockquote","hr","strong",
            "em","a","html","head","meta","title","style","body","header",
            "nav","main","footer","div","span","br","b","i","small",
-           "script"]
+    "section",
+    "article",
+    "aside",
+    "dl",
+    "dt",
+    "dd",
+    "figure",
+    "figcaption",
+    "time",
+    "abbr",
+    "mark",
+    "details",
+    "summary",
+    "kbd",
+    "samp",
+    "var"]
 risky = []
 for f in html_files:
     content = open(f, encoding="utf-8").read()
@@ -171,8 +186,12 @@ for f in html_files:
     s = re.sub(r"<!DOCTYPE[^>]*>", "", s, flags=re.I)
     # 注释也是合法的
     s = re.sub(r"<!--.*?-->", "", s, flags=re.S)
-    # REMOVE_SCRIPT_BLOCK: script 内容含 JS，不是"未转义残留"
+    # script / style 的内容是 JS / CSS，不是未转义的 HTML 标记。
+    # 必须移除，否则 CSS 里的子选择器 `>`（如 .a > div）
+    # 会被下面的 '<' / '>' 检查误判为未转义残留。
+    # （第 9 类误报：验证规则没跟上生成内容的形态变化）
     s = re.sub(r"<script\b[^>]*>.*?</script>", "", s, flags=re.S | re.I)
+    s = re.sub(r"<style\b[^>]*>.*?</style>", "", s, flags=re.S | re.I)
     for tag in ALLOWED:
         s = re.sub(r"</?%s(\s[^>]*)?/?>" % tag, "", s)
     if "<" in s or ">" in s:
@@ -185,20 +204,165 @@ if risky:
 else:
     ok("全部文件无未转义标记残留（DOCTYPE/注释/白名单标签已排除）")
 
+# ---- 导航高亮 ----
+print("\n── 7. 导航高亮检查 ──")
+# 教训（第 11 类：一个参数身兼两职，改动它就会连带改到别的地方）
+# page() 的 active 既决定"哪一项导航高亮"，又决定"要不要用分支式品牌名+面包屑"。
+# build_ops_home() 压根没传 active -> /ops/ 导航一项都不高亮，
+# 但品牌名和面包屑又正常，所以肉眼很容易漏掉。
+#
+# 每个页面必须恰好高亮 1 项，且高亮的那项要和页面身份相符。
+EXPECT_ON = {
+    "index.html": "运维首页",
+    "ops/index.html": "运维首页",
+    "ops/journal.html": "我的手记",
+    "ops/postmortem.html": "参考复盘",
+    "ops/system.html": "运维体系",
+}
+
+
+def expect_nav(rel):
+    if rel in EXPECT_ON:
+        return EXPECT_ON[rel]
+    if rel.startswith("ops/journal/"):
+        return "我的手记"
+    if rel.startswith("ops/postmortem/"):
+        return "参考复盘"
+    return None
+
+
+nav_bad = 0
+for f in sorted(html_files):
+    rel = os.path.relpath(f, BUILD)
+    content = open(f, encoding="utf-8").read()
+    m = re.search(r'<nav class="site">(.*?)</nav>', content, re.S)
+    if not m:
+        bad("%s 找不到主导航" % rel)
+        nav_bad += 1
+        continue
+    on = re.findall(r'<a href="[^"]*" class="on">([^<]*)</a>', m.group(1))
+    if len(on) != 1:
+        bad("%s 导航高亮 %d 项（应恰好 1 项）：%s"
+            % (rel, len(on), ",".join(on) if on else "无"))
+        nav_bad += 1
+        continue
+    want = expect_nav(rel)
+    if want and on[0] != want:
+        bad("%s 高亮项是 %s，应为 %s" % (rel, on[0], want))
+        nav_bad += 1
+
+if nav_bad == 0:
+    ok("全部 %d 个页面恰好高亮 1 项导航，且与页面身份相符" % len(html_files))
+
+# ---- 主题覆盖 ----
+print("\n── 8. 主题覆盖检查 ──")
+# 教训（第 10 类：验证规则没跟上结构变化 —— 这次是"新增主题"）
+# terminal 主题只写了底色 body.terminal{background:#0A0E12}，
+# 没写自己的 nav.site a / header.site .brand，
+# 于是通用规则（--ink 深灰，为浅色主题写的）落在近黑底上，
+# 对比度约 1.07:1，导航肉眼看不见。
+# 而当时的验证器只查内容不查样式，22/22 全绿把它放行了。
+#
+# 这段按 CSS 层叠规则（特异性 + 源顺序）算出每个主题下真正生效的颜色，
+# 若深色主题的颜色落在浅色 token 上，直接判失败。
+#
+# 注意：本检查自己踩过一次坑（1451 号补丁）—— 第一版没剥 CSS 注释，
+# 选择器里混进注释文本，归属判断被绕过，三个主题报出同一个结果。
+# 教训：检查代码也要有"证明它会失败"的负向测试，否则绿等于没查。
+
+INK_TOKENS = ("var(--ink)", "var(--ink-60)", "var(--ink-40)", "var(--ink-10)")
+DARK_THEMES = ("terminal", "ops-dark")
+
+
+def _strip_comments(css):
+    """剥掉 CSS 注释，避免注释文本被当成选择器。"""
+    return re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+
+
+def _weight(sel):
+    """粗略算选择器特异性：(类/属性数, 元素数)。"""
+    classes = len(re.findall(r"\.[a-zA-Z0-9_-]+|\[[^\]]*\]", sel))
+    elements = len(re.findall(r"(?:^|[\s>+~])[a-zA-Z][a-zA-Z0-9-]*", sel))
+    return (classes, elements)
+
+
+def _effective(css, theme, tail):
+    """算出该主题下"tail 选择器"（如 nav.site a）生效的 (选择符, color)。"""
+    css = _strip_comments(css)
+    best_key = None
+    best = None
+    order = 0
+    for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", css):
+        order += 1
+        sel_text = m.group(1).strip()
+        if not sel_text or sel_text.startswith("@"):
+            continue
+        cm = re.search(r"(?:^|;)\s*color\s*:\s*([^;]+)", m.group(2))
+        if not cm:
+            continue
+        for one in sel_text.split(","):
+            one = one.strip()
+            if not one.endswith(tail):
+                continue
+            owner = re.search(r"body\.([a-z0-9-]+)", one)
+            if owner and owner.group(1) != theme:
+                continue          # 别的主题的规则，不参与
+            key = _weight(one) + (order,)
+            if best_key is None or key > best_key:
+                best_key = key
+                best = (one, cm.group(1).strip())
+    return best
+
+
+theme_names = set()
+style_css = ""
+for f in html_files:
+    content = open(f, encoding="utf-8").read()
+    m = re.search(r'<body class="([a-z0-9-]+)"', content)
+    if m:
+        theme_names.add(m.group(1))
+    if not style_css:
+        sm = re.search(r"<style[^>]*>(.*?)</style>", content, re.S)
+        if sm:
+            style_css = sm.group(1)
+
+if not style_css:
+    bad("页面里找不到 <style> 块，无法做主题覆盖检查")
+else:
+    for theme in sorted(theme_names):
+        # 1) 该主题是否给了自己的页头/导航规则
+        for frag in ("nav.site a{", "header.site .brand{"):
+            if ("body.%s %s" % (theme, frag)) not in _strip_comments(style_css):
+                bad("主题 %s 缺少自己的规则 body.%s %s" % (theme, theme, frag))
+
+        # 2) 真正生效的颜色是不是浅色主题的深色 token
+        for tail, label in (("nav.site a", "导航"),
+                            ("header.site .brand", "品牌名")):
+            got = _effective(style_css, theme, tail)
+            if got is None:
+                bad("主题 %s：找不到适用的 %s 颜色规则" % (theme, tail))
+                continue
+            sel, color = got
+            if theme in DARK_THEMES and any(t in color for t in INK_TOKENS):
+                bad("主题 %s 的%s颜色落在浅色 token（%s -> %s），深底上不可见"
+                    % (theme, label, sel, color))
+            else:
+                ok("主题 %s 的%s颜色 %s（%s）" % (theme, label, color, sel))
+
 # ---- 体积 ----
-print("\n── 7. 体积与流量评估 ──")
+print("\n── 9. 体积与流量评估 ──")
 total = sum(os.path.getsize(f) for f in html_files)
 index_size = os.path.getsize(os.path.join(BUILD, "index.html"))
 pm_size = sum(os.path.getsize(f) for f in html_files
-              if "postmortem/" in f)
+              if "ops/postmortem/" in f)
 print("  全部 HTML:     %6.1f KB" % (total / 1024.0))
 print("  首页:          %6.1f KB (gzip 后约 %.1f KB)" % (
     index_size / 1024.0, index_size * 0.35 / 1024.0))
 print("  复盘页合计:    %6.1f KB" % (pm_size / 1024.0))
 print()
 print("  典型访问路径（首页 → 复盘列表 → 一篇复盘）:")
-typical = index_size + os.path.getsize(os.path.join(BUILD, "postmortem.html")) + \
-    os.path.getsize(os.path.join(BUILD, "postmortem/001-nginx-restart-policy.html"))
+typical = index_size + os.path.getsize(os.path.join(BUILD, "ops/postmortem.html")) + \
+    os.path.getsize(os.path.join(BUILD, "ops/postmortem/001-nginx-restart-policy.html"))
 print("    未压缩 %.1f KB → gzip 后约 %.1f KB" % (
     typical / 1024.0, typical * 0.35 / 1024.0))
 print()
