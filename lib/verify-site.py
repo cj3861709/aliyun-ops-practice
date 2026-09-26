@@ -383,6 +383,263 @@ else:
             else:
                 ok("主题 %s 的%s颜色 %s（%s）" % (theme, label, color, sel))
 
+# ---- 颜色契约（静态复算）----
+print("\n── 10. 颜色契约检查 ──")
+# 教训（第 13 类：检查覆盖到了"规则存在"，没覆盖"取值够不够"）。
+# 第 8 节只验证「深色主题有没有给自己的导航规则」，
+# 而 terminal 的 --term-comment 是 #6272A4，比对的又是"有没有落在浅色 token"，
+# 于是 4.04:1 的表格正文、3.13:1 的页脚一路绿灯放行。
+# 规则存在 ≠ 取值合格。这一节把取值也纳入契约。
+#
+# 做法：把「主题自有规则里的 color: var(--token)」解析成实色，
+# 合成到该元素真实会落到的底色上，取最差对比度，要求 >= 4.5（WCAG AA 正文）。
+#
+# 三条必须写明的边界，否则又会变成假阳性机器：
+#   a) 只查主题自有规则（body.<theme> ...）。通用规则（如 nav.site a）在
+#      深色主题下本来就被主题自有规则覆盖，真正决定"看不看得见"的是后者。
+#   b) 跳过 :hover / :active。那里的 color 常与 background 互换（反色），
+#      按下标算必然误报；反色的正确性由 .on 那条实底规则覆盖。
+#   c) 底色按元素实际位置分组：导航项落导航底，正文落页面/卡片/代码底。
+#      把导航当前项的亚麻底套到正文小字上算，会凭空造出 1.74:1 的假缺陷。
+
+_CONTRACT_SURFACES = {
+    "terminal": {
+        "text": [("页面", "--term-bg"), ("表格格 #0C1014", "#0C1014"),
+                 ("term 块", "rgba(255,255,255,.012)"),
+                 ("tmux 条", "rgba(74,246,38,.04)")],
+        "nav":  [("页面", "--term-bg"), ("导航底", "rgba(139,233,253,.06)")],
+    },
+    "ops-dark": {
+        "text": [("页面", "--dark-bg"), ("卡片/表头 #1B1F25", "#1B1F25"),
+                 ("代码块", "--dark-bg-2")],
+        "nav":  [("页面", "--dark-bg"), ("导航底", "rgba(255,255,255,.08)")],
+    },
+    "anime": {
+        "text": [("页面", "--cel-paper"), ("卡片 #ffffff", "#ffffff")],
+        "nav":  [("页面", "--cel-paper")],
+    },
+    "editorial": {
+        "text": [("页面", "--paper"), ("卡片 #ffffff", "#ffffff")],
+        "nav":  [("页面", "--paper")],
+    },
+}
+_CONTRACT_PAGE = {"terminal": "--term-bg", "ops-dark": "--dark-bg",
+                  "anime": "--cel-paper", "editorial": "--paper"}
+# 豁免项必须写明理由 —— 这些 token 不是"文字颜色"，是装饰。
+_CONTRACT_EXEMPT = {
+    "--term-line": "ASCII 分隔线，装饰",
+    "--dark-line": "分隔线，装饰",
+    "--ink-10": "边框",
+    "--ink-05": "边框",
+    "--cel-red": "首页卡片 ◆ 装饰符",
+}
+
+
+def _c_parse(txt):
+    m = re.match(r"#([0-9a-fA-F]{6})$", txt.strip())
+    if m:
+        h = m.group(1)
+        return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), 1.0)
+    m = re.match(r"rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*"
+                 r"(?:,\s*([\d.]+)\s*)?\)", txt.strip())
+    if m:
+        return (float(m.group(1)), float(m.group(2)), float(m.group(3)),
+                float(m.group(4)) if m.group(4) is not None else 1.0)
+    return None
+
+
+def _c_over(fg, bg):
+    r, g, b, a = fg
+    return (r * a + bg[0] * (1 - a), g * a + bg[1] * (1 - a),
+            b * a + bg[2] * (1 - a))
+
+
+def _c_lin(c):
+    c = c / 255.0
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def _c_lum(c):
+    return 0.2126 * _c_lin(c[0]) + 0.7152 * _c_lin(c[1]) + 0.0722 * _c_lin(c[2])
+
+
+def _c_ratio(fg, bg):
+    a, b = _c_lum(fg), _c_lum(bg)
+    if a < b:
+        a, b = b, a
+    return (a + 0.05) / (b + 0.05)
+
+
+_css_clean = _strip_comments(style_css) if style_css else ""
+_c_tokens = {}
+for _m in re.finditer(r"([^{}]+)\{([^{}]*)\}", _css_clean):
+    if ":root" not in _m.group(1):
+        continue
+    for _t in re.finditer(r"(--[a-z0-9-]+)\s*:\s*([^;]+);", _m.group(2)):
+        _c_tokens[_t.group(1)] = _t.group(2).strip()
+
+
+def _c_resolve(txt, depth=0):
+    if txt is None or depth > 6:
+        return None
+    txt = txt.strip()
+    m = re.match(r"var\((--[a-z0-9-]+)(?:\s*,\s*([^)]+))?\)", txt)
+    if m:
+        val = _c_tokens.get(m.group(1))
+        if val is None:
+            return _c_resolve(m.group(2), depth + 1) if m.group(2) else None
+        return _c_resolve(val, depth + 1)
+    return _c_parse(txt)
+
+
+def _c_surfaces(theme, kind):
+    base = _c_resolve("var(%s)" % _CONTRACT_PAGE[theme])
+    out = []
+    for label, val in _CONTRACT_SURFACES[theme][kind]:
+        c = _c_resolve("var(%s)" % val) if val.startswith("--") \
+            else _c_parse(val)
+        if c is None:
+            continue
+        out.append((label, _c_over(c, base) if c[3] < 1.0 else c))
+    return out
+
+
+_contract_checked = 0
+for _theme in sorted(theme_names):
+    if _theme not in _CONTRACT_SURFACES:
+        continue
+    _rows = {}
+    for _m in re.finditer(r"([^{}]+)\{([^{}]*)\}", _css_clean):
+        _sel = _m.group(1).strip()
+        if not re.search(r"body\.%s\b" % re.escape(_theme), _sel):
+            continue
+        _body = _m.group(2)
+        _cm = re.search(r"(?:^|;)\s*color\s*:\s*([^;]+)", _body)
+        if not _cm:
+            continue
+        _tm = re.search(r"var\((--[a-z0-9-]+)", _cm.group(1))
+        if not _tm:
+            continue
+        _one = _sel.split(",")[0].strip()
+        if ":hover" in _one or ":active" in _one:
+            continue
+        # 这个元素落在哪种底色上：内容区（text）还是导航栏（nav）。
+        # 不能用 'nav' in _one 判断 —— .nav-back（返回链接）名字里含 nav，
+        # 但它是导航栏下面的正文小字，落在页面上；按子串判会让
+        # --dark-fg-40 去和导航底比，报出指向错误位置的结论。
+        _kind = "nav" if re.search(r"nav\.site|\.on\b", _one) else "text"
+        # 规则块自带不透明底色时（如实底的当前页导航项），
+        # 它自己就是那个元素的底色，不能再套一层'导航半透明底'。
+        _bm = re.search(r"(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)", _body)
+        _own = None
+        if _bm and "none" not in _bm.group(1):
+            _bc = _c_resolve(_bm.group(1).strip())
+            if _bc and _bc[3] > 0.9:
+                _own = _bm.group(1).strip()
+        _rows.setdefault(_tm.group(1), set()).add((_kind, _own))
+
+    for _tok in sorted(_rows):
+        _col = _c_resolve("var(%s)" % _tok)
+        if _col is None:
+            continue
+        _worst = None
+        _wlab = ""
+        for _kind, _own in sorted(_rows[_tok],
+                                  key=lambda t: (t[0], t[1] or "")):
+            _sf = [('规则自带底色', _c_resolve(_own))] if _own \
+                else _c_surfaces(_theme, _kind)
+            for _lab, _bg in _sf:
+                _fg = _c_over(_col, _bg) if _col[3] < 1.0 else _col
+                _r = _c_ratio(_fg, _bg)
+                if _worst is None or _r < _worst:
+                    _worst, _wlab = _r, _lab
+        if _worst is None:
+            continue
+        _contract_checked += 1
+        if _tok in _CONTRACT_EXEMPT:
+            ok("%s %s 豁免（%s）" % (_theme, _tok, _CONTRACT_EXEMPT[_tok]))
+        elif _worst < 4.5:
+            bad("%s 主题 %s 最差 %.2f:1（%s 底），低于 AA 正文 4.5:1"
+                % (_theme, _tok, _worst, _wlab))
+        else:
+            ok("%s 主题 %s 最差 %.2f:1（%s 底）" % (_theme, _tok, _worst, _wlab))
+
+if _contract_checked == 0:
+    bad("颜色契约检查没有覆盖到任何 token —— 检查本身失效，比查出问题更危险")
+
+# ---- 公开产物卫生 ----
+print("\n── 11. 公开产物卫生检查 ──")
+# 教训（第 14 类：修补一处泄漏时，检查规则自己成了新的泄漏面）。
+# 想加一条"站内不许出现本机公网 IP"的检查，最自然的写法是把那个 IP
+# 写进这条检查里 —— 而 verify-site.py 是 git 跟踪文件，
+# 于是"防泄漏检查"自己把 IP 提交进了公开仓库。
+# 所以：真实值放 conf/redact-list.txt（已 gitignore，不进仓库），
+# 脚本里只留结构性形态判断（实例 ID、主机名、密钥、证件号）。
+_BUILTIN_HYGIENE = [
+    ("实例 ID", r"\bi-[a-z0-9]{12,}\b"),
+    ("ECS 主机名", r"\biZ[A-Za-z0-9]{10,}Z\b"),
+    ("阿里云 AccessKey", r"\bLTAI[A-Za-z0-9]{10,}\b"),
+    ("私钥头", r"BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY"),
+    ("SSH 公钥体", r"(?:ssh-rsa|ssh-ed25519) AAAA[A-Za-z0-9+/=]{20,}"),
+    ("手机号", r"(?<!\d)1[3-9]\d{9}(?!\d)"),
+    ("身份证", r"(?<!\d)\d{17}[\dXx](?!\d)"),
+]
+
+_redact_path = os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "conf", "redact-list.txt")
+_hygiene = list(_BUILTIN_HYGIENE)
+if os.path.exists(_redact_path):
+    _n_redact = 0
+    for _line in open(_redact_path, encoding="utf-8"):
+        _line = _line.strip()
+        if not _line or _line.startswith("#"):
+            continue
+        _parts = _line.split("\t")
+        _hygiene.append((_parts[1] if len(_parts) > 1 else "自定义脱敏项",
+                         _parts[0]))
+        _n_redact += 1
+    print("  已加载 conf/redact-list.txt 的 %d 条自定义规则" % _n_redact)
+else:
+    print("  ⚠ 未找到 conf/redact-list.txt（该文件不进仓库，属预期）")
+
+_scan_files = [f for f in html_files] + \
+    [os.path.join(BUILD, "robots.txt")]
+_hygiene_hits = 0
+for _label, _rx in _hygiene:
+    _hit = {}
+    for _f in _scan_files:
+        if not os.path.exists(_f):
+            continue
+        _s = open(_f, encoding="utf-8", errors="replace").read()
+        for _m in re.findall(_rx, _s):
+            _hit.setdefault(_m, []).append(os.path.relpath(_f, BUILD))
+    if _hit:
+        _hygiene_hits += 1
+        for _k in sorted(_hit):
+            bad("公开产物含【%s】: %s（%d 个文件，如 %s）"
+                % (_label, _k, len(_hit[_k]), sorted(_hit[_k])[0]))
+if _hygiene_hits == 0:
+    ok("公开产物无实例 ID / 主机名 / 密钥 / 证件号 / 自定义脱敏项")
+
+# 备案号是法律要求必须展示的，不能被"脱敏"顺手删掉 —— 反向断言。
+_ICP = re.search(r"[京沪粤浙苏鲁川渝皖闽湘鄂豫冀晋辽吉黑赣桂云贵陕甘青宁新藏蒙京津]ICP备\d+号(?:-\d+)?",
+                 style_css or "") or re.search(
+    r"[京沪粤浙苏鲁川渝皖闽湘鄂豫冀晋辽吉黑赣桂云贵陕甘青宁新藏蒙京津]ICP备\d+号(?:-\d+)?",
+    open(os.path.join(BUILD, "index.html"), encoding="utf-8").read())
+if not _ICP:
+    bad("找不到 ICP 备案号 —— 备案号是法律要求展示项，必须保留")
+else:
+    _missing = []
+    for _f in html_files:
+        if _ICP.group(0) not in open(_f, encoding="utf-8").read():
+            _missing.append(os.path.relpath(_f, BUILD))
+    if _missing:
+        bad("以下 %d 个页面缺备案号 %s：%s"
+            % (len(_missing), _ICP.group(0), ", ".join(_missing[:5])))
+    else:
+        ok("备案号 %s 出现在全部 %d 个页面"
+           % (_ICP.group(0), len(html_files)))
+
 # ---- 体积 ----
 print("\n── 9. 体积与流量评估 ──")
 total = sum(os.path.getsize(f) for f in html_files)

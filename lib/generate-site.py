@@ -52,7 +52,8 @@ ICP_URL = "https://beian.miit.gov.cn/"
 # ---------------------------------------------------------------------------
 CSS = """
 /* ===========================================================================
-   折中风格：首页终端风 + 内页编辑杂志风
+   共四套主题：首页 anime、运维首页 terminal、分支页 ops-dark、
+   其余页面 editorial（编辑杂志风）。下面按主题分组列出 token。
 
    终端风 token（首页）：
      --term-bg      #0A0E12   近黑
@@ -60,7 +61,7 @@ CSS = """
      --term-cyan    #8BE9FD   青色（路径、链接）
      --term-magenta #FF79C6   品红（错误、关键字）
      --term-amber   #FFB86C   琥珀（数字、警告）
-     --term-comment #6272A4   蓝灰（注释）
+     --term-comment #8697BE   蓝灰（注释，可读下限之上）
 
    编辑杂志风 token（内页）：
      --paper        #F9F8F6   暖米色
@@ -77,7 +78,11 @@ CSS = """
   --term-cyan:#8BE9FD;
   --term-magenta:#FF79C6;
   --term-amber:#FFB86C;
-  --term-comment:#6272A4;
+  --term-comment:#8697BE;   /* 旧值 #6272A4 在真实底色上最差 3.71:1，
+                                低于 WCAG AA 正文 4.5:1；它同时是
+                                th/td/.comment/.tmux 的颜色，等于表格正文
+                                与注释一起不可读。现最差 5.97:1，
+                                仍显著暗于 --term-cyan(13.19)，层级不变。 */
   --term-line:#1F2937;
 
   /* 编辑杂志风 */
@@ -220,7 +225,10 @@ body.anime .hero-desc{
 /* ── 项目卡片网格 ── */
 body.anime .proj-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
+  grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));
+  /* 330px 是硬性最小列宽：视口 360px 时内容宽 324px，溢出 6px；
+     320px 时内容宽 284px，溢出 46px。min(330px,100%) 允许列宽
+     小于 330px，窄屏不再撑破视口。 */
   gap:26px;
   padding:44px 24px;
   max-width:1000px;margin:0 auto;
@@ -379,8 +387,13 @@ body.anime .filing a:hover{color:var(--cel-ink)}
   --dark-bg:#171B21;
   --dark-bg-2:#1E242C;
   --dark-fg:#D8DEE9;
-  --dark-fg-60:rgba(216,222,233,.6);
-  --dark-fg-40:rgba(216,222,233,.4);
+  --dark-fg-60:rgba(216,222,233,.78);  /* 第二级文字（.lede 导语、blockquote、
+                                .notice p、.crumbs a）。旧 .6 是 5.09:1，
+                                合格但零余量；.78 为 7.59:1。 */
+  --dark-fg-40:rgba(216,222,233,.58);  /* 第三级文字（页头副标题、卡片元信息、
+                                分页说明、页脚备案行）。旧 .4 在代码块底
+                                #1E242C 上只有 3.06:1；.58 为 4.85:1，
+                                且与二级/正文仍拉开层次。 */
   --dark-line:rgba(216,222,233,.14);
   --dark-cyan:#8BE9FD;
   --dark-amber:#FFB86C;
