@@ -640,6 +640,37 @@ else:
         ok("备案号 %s 出现在全部 %d 个页面"
            % (_ICP.group(0), len(html_files)))
 
+# 公网安备号同样受反向断言保护 —— 它也是法律要求展示项。
+# 上一轮只给 ICP 加了断言，公安备案批下来后如果只改生成器、
+# 忘了这里，就会出现"某个页面的号码悄悄丢了而验证器全绿"。
+_MPS = re.search(
+    r"[京沪粤浙苏鲁川渝皖闽湘鄂豫冀晋辽吉黑赣桂云贵陕甘青宁新藏蒙京津]公网安备\d+号",
+    open(os.path.join(BUILD, "index.html"), encoding="utf-8").read())
+if not _MPS:
+    bad("找不到公网安备号 —— 它同样是法律要求展示项，必须保留")
+else:
+    _mps_missing = []
+    _mps_badlink = []
+    for _f in html_files:
+        _s = open(_f, encoding="utf-8").read()
+        _rel = os.path.relpath(_f, BUILD)
+        if _MPS.group(0) not in _s:
+            _mps_missing.append(_rel)
+        # 链接指向官方平台才算数：号码写对、链接指错，比不写更糟。
+        if "beian.mps.gov.cn" not in _s:
+            _mps_badlink.append(_rel)
+    if _mps_missing:
+        bad("以下 %d 个页面缺公网安备号 %s：%s"
+            % (len(_mps_missing), _MPS.group(0), ", ".join(_mps_missing[:5])))
+    else:
+        ok("公网安备号 %s 出现在全部 %d 个页面"
+           % (_MPS.group(0), len(html_files)))
+    if _mps_badlink:
+        bad("以下 %d 个页面的公网安备链接未指向 beian.mps.gov.cn：%s"
+            % (len(_mps_badlink), ", ".join(_mps_badlink[:5])))
+    else:
+        ok("公网安备链接均指向 beian.mps.gov.cn")
+
 # ---- 体积 ----
 print("\n── 9. 体积与流量评估 ──")
 total = sum(os.path.getsize(f) for f in html_files)

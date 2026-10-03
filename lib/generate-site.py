@@ -43,9 +43,16 @@ OPS_SUBDIR = "ops"
 SITE_TITLE = "项目工作台"
 SITE_SUBTITLE = "个人项目与实践记录"
 
-# ICP 备案号（法律要求显示在网站底部）
+# 备案号（法律要求显示在网站底部）。
+# 两个备案彼此独立、都要展示：
+#   ICP   —— 工信部，管"网站能不能开"（域名与主体实名）
+#   公网安备 —— 公安部门，管"网站归谁负责"（联网单位备案）
 ICP_NUMBER = "粤ICP备2026144293号-1"
 ICP_URL = "https://beian.miit.gov.cn/"
+
+MPS_NUMBER = "粤公网安备44538102000155号"
+# 官方查询平台带 code 参数可直接定位到本条备案
+MPS_URL = "https://beian.mps.gov.cn/#/query/webSearch?code=44538102000155"
 
 # ---------------------------------------------------------------------------
 # 样式：内联到每个页面。控制在 ~3KB 内，兼顾美观与体积。
@@ -982,6 +989,9 @@ footer.site{
   color:var(--ink-40);font-size:.8rem;line-height:1.9;
 }
 .filing{margin-top:8px;font-size:.78rem}
+/* 两个备案号之间的分隔符：只用 opacity 淡出，不设 color ——
+   这样四套主题共用一条规则，且不落入颜色契约检查的扫描面。 */
+.filing-sep{opacity:.45;margin:0 6px}
 .filing a{color:var(--ink-40);border-bottom:none}
 .filing a:hover{color:var(--ink)}
 
@@ -1476,7 +1486,7 @@ def page(title, body, rel_root="", active="", description="", style="ops-dark",
 {site} · 部署于阿里云 ECS 2C2G（Alibaba Cloud Linux 3 + nginx + systemd）<br>
 本站由自研 Python 静态生成器构建，零第三方依赖。
 <div class="filing">
-<a href="{icp_url}" target="_blank" rel="noopener noreferrer">{icp}</a>
+<a href="{icp_url}" target="_blank" rel="noopener noreferrer">{icp}</a><span class="filing-sep">·</span><a href="{mps_url}" target="_blank" rel="noopener noreferrer">{mps}</a>
 </div>
 </div></footer>
 <script>{js}</script>
@@ -1485,7 +1495,8 @@ def page(title, body, rel_root="", active="", description="", style="ops-dark",
 """.format(title=esc(title), desc=esc(description), css=CSS,
            root=rel_root, site=esc(SITE_TITLE), sub=esc(SITE_SUBTITLE), brand=brand_html,
            nav=navhtml, crumbs=crumbs, body=body, js=PAGER_JS,
-           icp=ICP_NUMBER, icp_url=ICP_URL, bodyclass=style)
+           icp=ICP_NUMBER, icp_url=ICP_URL,
+           mps=MPS_NUMBER, mps_url=MPS_URL, bodyclass=style)
 
 
 def load_journals():
