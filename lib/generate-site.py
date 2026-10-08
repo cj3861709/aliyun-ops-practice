@@ -553,6 +553,26 @@ body.ops-dark pre code{
   background:none;padding:0;color:var(--dark-fg);font-size:inherit;
 }
 
+/* ── 命令块 / 输出块：视觉分离 ──
+   为什么要分开：手记里大量出现「一条命令 + 一段回显」。
+   两者都用同一套 <pre> 样式时，读者分不清哪行是自己敲的、
+   哪行是机器回的 —— 等于把排查过程的关键线索抹平了。
+
+   怎么分：md2html 对带语言的围栏（```bash）会同时给 <pre> 和 <code>
+   打上 language- 标记；无语言的围栏（就是命令的输出）只有裸 <pre><code>。
+     命令块 → 贴页面底色 + 3px 青色左竖条（你敲进去的那一行）
+     输出块 → 面板底色，无竖条（机器吐出来的，退后一层）
+
+   左内边距 18px → 16px：左边框从 1px 变 3px，减 2px 让两块的文字左缘对齐，
+   否则命令块里的正文会比输出块右移 2px，看起来像没对齐。
+
+   不加「命令 / 输出」文字标签 —— 标签会抢戏。 */
+body.ops-dark pre[class*="language-"]{
+  background:var(--dark-bg);
+  border-left:3px solid var(--dark-cyan);
+  padding:14px 18px 14px 16px;
+}
+
 /* ── 表格 ── */
 body.ops-dark table{
   width:100%;border-collapse:collapse;font-size:.87rem;margin:22px 0;

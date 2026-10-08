@@ -77,8 +77,17 @@ print("\n── 3. HTML 标签配平 ──")
 VOID = {"meta", "link", "br", "hr", "img", "input", "area", "base",
         "col", "embed", "source", "track", "wbr"}
 unbalanced = []
+_stripped_bytes = [0]
 for f in html_files:
     content = open(f, encoding="utf-8").read()
+    # 剥掉「原始文本」容器：<style>/<script> 的内容与 HTML 注释，按规范都不是元素，
+    # 里面的 <pre> 这类文本会被下面的配平器误当成标签。
+    # （A1 给 generate-site.py 的 CSS 注释里写了字面量 <pre>，就踩了这个坑。）
+    _saved = len(content)
+    content = re.sub(r"<style\b[^>]*>.*?</style>", "", content, flags=re.S | re.I)
+    content = re.sub(r"<script\b[^>]*>.*?</script>", "", content, flags=re.S | re.I)
+    content = re.sub(r"<!--.*?-->", "", content, flags=re.S)
+    _stripped_bytes[0] += _saved - len(content)
     stack = []
     problem = None
     for m in re.finditer(r"<(/?)([a-zA-Z][a-zA-Z0-9]*)([^>]*)>", content):
@@ -103,6 +112,7 @@ for f in html_files:
     if problem:
         unbalanced.append((os.path.relpath(f, BUILD), problem))
 
+print("  （预处理：剥掉 style/script/注释共 %d 字节 —— 这些内容按规范不是元素）" % _stripped_bytes[0])
 if unbalanced:
     for name, prob in unbalanced:
         bad("%s: %s" % (name, prob))
@@ -672,6 +682,32 @@ else:
         ok("公网安备链接均指向 beian.mps.gov.cn")
 
 # ---- 体积 ----
+
+print("\n── 12. 命令块 / 输出块分离检查 ──")
+# 为什么要有这一节：markdown 里「命令」和「输出」是两种东西，
+# 但它们在 HTML 里都长成 <pre><code>，只靠人眼在源码里是看不出来的。
+# A1 补的两件事（<pre> 带 language- 标记 + 对应 CSS）任何一件丢了，
+# 页面上命令与输出就又混成一片 —— 而那时候所有别的检查都还是绿的。
+_GEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "generate-site.py")
+_gsrc = open(_GEN, encoding="utf-8").read() if os.path.isfile(_GEN) else ""
+if "pre[class*=\"language-\"]" not in _gsrc:
+    bad("generate-site.py 缺少命令块样式（pre[class*=language-]）—— 命令与输出会看不出差别")
+else:
+    ok("命令块样式规则存在（body.ops-dark pre[class*=\"language-\"]）")
+_cmd_n = _out_n = 0
+for _r2, _d2, _f2s in os.walk(BUILD):
+    for _f2 in _f2s:
+        if not _f2.endswith(".html"):
+            continue
+        _s2 = open(os.path.join(_r2, _f2), encoding="utf-8", errors="replace").read()
+        _cmd_n += len(re.findall(r'<pre class="language-', _s2))
+        _out_n += len(re.findall(r"<pre><code>", _s2))
+if _cmd_n == 0:
+    bad("构建产物里没有任何带 language- 标记的 <pre> —— md2html 的标记没生效")
+else:
+    ok("命令块 %d 个 / 输出块 %d 个，DOM 上已可区分" % (_cmd_n, _out_n))
+if _out_n == 0:
+    bad("构建产物里没有任何无标记 <pre> —— 输出块形态异常")
 print("\n── 9. 体积与流量评估 ──")
 total = sum(os.path.getsize(f) for f in html_files)
 index_size = os.path.getsize(os.path.join(BUILD, "index.html"))

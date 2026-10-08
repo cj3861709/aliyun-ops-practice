@@ -165,7 +165,7 @@ def md2html(text):
             idx = int(re.search(r"\d+", stripped).group(0))
             lang, code = code_blocks[idx]
             cls = ' class="language-%s"' % escape_attr(lang) if lang else ""
-            out.append("<pre><code%s>%s</code></pre>" % (cls, code))
+            out.append("<pre%s><code%s>%s</code></pre>" % (cls, cls, code))
             i += 1
             continue
 
