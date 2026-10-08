@@ -52,14 +52,17 @@ ok("共 %d 个 HTML 文件" % len(html_files))
 # ---- 链接检查 ----
 print("\n── 2. 内部链接检查（404 检测）──")
 LINK_RE = re.compile(r'href="([^"]+)"')
+# 图片走 src 而不是 href。只查 href 的话，图挂了（404）根本发现不了。
+SRC_RE = re.compile(r'src="([^"]+)"')
 broken = []
 total_links = 0
 
 for f in html_files:
     base = os.path.dirname(f)
     content = open(f, encoding="utf-8").read()
-    for href in LINK_RE.findall(content):
-        if href.startswith(("http://", "https://", "mailto:", "#", "javascript:")):
+    for href in LINK_RE.findall(content) + SRC_RE.findall(content):
+        if href.startswith(("http://", "https://", "mailto:", "#",
+                            "javascript:", "data:")):
             continue
         total_links += 1
         target = os.path.normpath(os.path.join(base, href))
@@ -187,7 +190,8 @@ ALLOWED = ["h1","h2","h3","h4","h5","h6","p","ul","ol","li","table","thead",
     "summary",
     "kbd",
     "samp",
-    "var"]
+    "var",
+    "img"]
 risky = []
 for f in html_files:
     content = open(f, encoding="utf-8").read()
@@ -222,26 +226,57 @@ print("\n── 7. 导航高亮检查 ──")
 # 但品牌名和面包屑又正常，所以肉眼很容易漏掉。
 #
 # 每个页面必须恰好高亮 1 项，且高亮的那项要和页面身份相符。
-BRANCH_NAV_LABELS = ("运维首页", "我的手记", "参考复盘", "运维体系")
-
-# 首页（工作台）不在这张表里：它不对应任何一章，也不该高亮任何一项。
-# 旧版这里写着 "index.html": "运维首页" —— 等于把"首页套用分支章节导航"
-# 这个错误本身写成了正确预期，所以 22/22 全绿也照样放行。
-EXPECT_ON = {
-    "ops/index.html": "运维首页",
-    "ops/journal.html": "我的手记",
-    "ops/postmortem.html": "参考复盘",
-    "ops/system.html": "运维体系",
+#
+# 站点是多项目结构，每个分支有自己的一套章节导航，所以标签集必须按分支取。
+# 旧版是一张全局表（只有运维那四项），新增分支后 dm 的每一页都会判"缺少章节导航项"。
+BRANCHES = {
+    "ops": {
+        "labels": ("运维首页", "我的手记", "参考复盘", "运维体系"),
+        "expect": {
+            "ops/index.html": "运维首页",
+            "ops/journal.html": "我的手记",
+            "ops/postmortem.html": "参考复盘",
+            "ops/system.html": "运维体系",
+        },
+        "prefix": (
+            ("ops/journal/", "我的手记"),
+            ("ops/postmortem/", "参考复盘"),
+        ),
+    },
+    "dm": {
+        "labels": ("概览", "实验一", "实验二", "实验三", "实验四", "实验五"),
+        "expect": {
+            "dm/index.html": "概览",
+            "dm/exp1.html": "实验一",
+            "dm/exp2.html": "实验二",
+            "dm/exp3.html": "实验三",
+            "dm/exp4.html": "实验四",
+            "dm/exp5.html": "实验五",
+        },
+        "prefix": (),
+    },
 }
 
+# 工作台首页不在这套体系里：它不对应任何一章，也不该高亮任何一项。
+# 这里用所有分支标签的并集判"分支导航泄漏到工作台"。
+ALL_BRANCH_LABELS = tuple(
+    _x for _b in BRANCHES.values() for _x in _b["labels"])
 
-def expect_nav(rel):
-    if rel in EXPECT_ON:
-        return EXPECT_ON[rel]
-    if rel.startswith("ops/journal/"):
-        return "我的手记"
-    if rel.startswith("ops/postmortem/"):
-        return "参考复盘"
+
+def branch_of(rel):
+    """按路径首段判分支；工作台首页没有首段，返回 None。"""
+    if "/" not in rel:
+        return None
+    _head = rel.split("/", 1)[0]
+    return _head if _head in BRANCHES else None
+
+
+def expect_nav(rel, binfo):
+    if rel in binfo["expect"]:
+        return binfo["expect"][rel]
+    for _pre, _label in binfo["prefix"]:
+        if rel.startswith(_pre):
+            return _label
     return None
 
 
@@ -263,7 +298,7 @@ for f in sorted(html_files):
     # 首页曾经直接套用分支的章节导航，而 EXPECT_ON 又把它写成预期，
     # 于是全绿放行。现在改成从层级上判：工作台的导航里不得出现任何章节项。
     if rel == "index.html":
-        leaked = [x for x in labels if x in BRANCH_NAV_LABELS]
+        leaked = [x for x in labels if x in ALL_BRANCH_LABELS]
         if leaked:
             bad("index.html（工作台）出现了分支内的章节导航：%s" % ",".join(leaked))
             nav_bad += 1
@@ -278,7 +313,14 @@ for f in sorted(html_files):
             nav_bad += 1
         continue
 
-    missing = [x for x in BRANCH_NAV_LABELS if x not in labels]
+    bname = branch_of(rel)
+    if not bname:
+        bad("%s 不属于任何已知分支（首段路径无法识别）" % rel)
+        nav_bad += 1
+        continue
+    binfo = BRANCHES[bname]
+
+    missing = [x for x in binfo["labels"] if x not in labels]
     if missing:
         bad("%s 缺少章节导航项：%s" % (rel, ",".join(missing)))
         nav_bad += 1
@@ -289,7 +331,7 @@ for f in sorted(html_files):
             % (rel, len(on), ",".join(on) if on else "无"))
         nav_bad += 1
         continue
-    want = expect_nav(rel)
+    want = expect_nav(rel, binfo)
     if want and on[0] != want:
         bad("%s 高亮项是 %s，应为 %s" % (rel, on[0], want))
         nav_bad += 1

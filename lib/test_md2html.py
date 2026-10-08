@@ -27,6 +27,7 @@ ALLOWED_TAGS = [
     "h1", "h2", "h3", "h4", "h5", "h6",
     "p", "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
     "pre", "code", "blockquote", "hr", "strong", "em", "a",
+    "figure", "figcaption", "img",
 ]
 
 
@@ -128,6 +129,22 @@ check("行内代码", M.md2html("用 `ls` 查"), "<code>ls</code>")
 check("粗体", M.md2html("**重点**"), "<strong>重点</strong>")
 check("斜体", M.md2html("*强调*"), "<em>强调</em>")
 check("链接", M.md2html("[字](http://e.com)"), '<a href="http://e.com">字</a>')
+
+print()
+print("── 7b. 图片 ──")
+check("整行图片",
+      M.md2html("![图 1](img/image1.png)"),
+      '<figure><img src="img/image1.png" alt="图 1">'
+      '<figcaption>图 1</figcaption></figure>')
+check("行内图片",
+      M.md2html("见 ![图 2](img/image2.png) 所示"),
+      '<img src="img/image2.png" alt="图 2">')
+check("图片危险协议被拦截", M.md2html("![x](javascript:alert(1))"),
+      "x", expect_absent=['src="javascript'])
+check("整行图片危险协议退化", M.md2html("![x](data:text/html,x)"),
+      "<p>x</p>", expect_absent=["<img"])
+check("有序列表起始编号", M.md2html("8. 第八\n9. 第九"), '<ol start="8">')
+check("有序列表从 1 起不带 start", M.md2html("1. 第一\n2. 第二"), "<ol>")
 
 print()
 print("── 8. 行内代码保护 ──")

@@ -37,8 +37,20 @@ CONTENT_DIR = os.path.join(LAB, "site", "content")
 JOURNAL_DIR = os.path.join(LAB, "my-journal")
 BUILD_DIR = os.path.join(LAB, "site", "build")
 
-# 运维分支配目录 —— 站点是多项目结构，运维只是其中一个项目
+# 分支目录 —— 站点是多项目结构，每个项目一个分支
 OPS_SUBDIR = "ops"
+DM_SUBDIR = "dm"
+# 数据挖掘分支的源材料：5 篇实验报告 Markdown + img/ 下的运行截图
+DM_DIR = os.path.join(LAB, "my-dm")
+
+# 数据挖掘分支的 5 篇报告（编号, 标题, 时间, 导航 key）
+DM_ITEMS = [
+    ("1", "实验一 · 特征选择", "2026/4/14", "e1"),
+    ("2", "实验二 · 分类", "2026/5/12", "e2"),
+    ("3", "实验三 · 回归", "2026/5/14", "e3"),
+    ("4", "实验四 · 集成技术", "2026/6/2", "e4"),
+    ("5", "实验五 · 聚类分析", "2026/6/11", "e5"),
+]
 
 SITE_TITLE = "项目工作台"
 SITE_SUBTITLE = "个人项目与实践记录"
@@ -571,6 +583,22 @@ body.ops-dark pre[class*="language-"]{
   background:var(--dark-bg);
   border-left:3px solid var(--dark-cyan);
   padding:14px 18px 14px 16px;
+}
+
+/* ── 图片与图注（数据挖掘分支的运行截图）──
+   截图是 matplotlib / IDE 的白底图，直接放在深色页面上会"发光"。
+   加一层浅色边框 + 圆角收住边界即可，不动图片本身。 */
+body.ops-dark figure{
+  margin:26px 0;padding:0;
+}
+body.ops-dark figure img{
+  max-width:100%;height:auto;display:block;margin:0 auto;
+  background:#fff;border:1px solid rgba(255,255,255,.13);
+  border-radius:3px;
+}
+body.ops-dark figcaption{
+  margin-top:8px;font-size:.78rem;letter-spacing:.04em;
+  color:var(--dark-fg-40);text-align:center;
 }
 
 /* ── 表格 ── */
@@ -1423,11 +1451,46 @@ def esc(s):
 # 以后新增项目，在这里加一条即可。
 PROJECT_NAV = [
     (OPS_SUBDIR + "/", "运维实践"),
+    (DM_SUBDIR + "/", "数据挖掘"),
 ]
 
 
+# 分支元信息：品牌名、面包屑的当前层级名。
+# 之前「运维」是硬编码在 page() 里的 —— 新增分支就会在页头显示错分支名。
+BRANCHES = {
+    OPS_SUBDIR: {
+        "name": "运维",
+        "crumbs": {"journal": "我的手记", "pm": "参考复盘", "ops": "运维体系"},
+    },
+    DM_SUBDIR: {
+        "name": "数据挖掘",
+        "crumbs": {"e1": "实验一", "e2": "实验二", "e3": "实验三",
+                   "e4": "实验四", "e5": "实验五"},
+    },
+}
+
+
+def _branch_nav(subdir):
+    """分支内的章节导航。"""
+    if subdir == DM_SUBDIR:
+        return [
+            (DM_SUBDIR + "/index.html", "概览", "home"),
+            (DM_SUBDIR + "/exp1.html", "实验一", "e1"),
+            (DM_SUBDIR + "/exp2.html", "实验二", "e2"),
+            (DM_SUBDIR + "/exp3.html", "实验三", "e3"),
+            (DM_SUBDIR + "/exp4.html", "实验四", "e4"),
+            (DM_SUBDIR + "/exp5.html", "实验五", "e5"),
+        ]
+    return [
+        (OPS_SUBDIR + "/index.html", "运维首页", "home"),
+        (OPS_SUBDIR + "/journal.html", "我的手记", "journal"),
+        (OPS_SUBDIR + "/postmortem.html", "参考复盘", "pm"),
+        (OPS_SUBDIR + "/system.html", "运维体系", "ops"),
+    ]
+
+
 def page(title, body, rel_root="", active="", description="", style="ops-dark",
-         nav_active=None, nav_mode="branch"):
+         nav_active=None, nav_mode="branch", branch=OPS_SUBDIR):
     """渲染一个完整页面。rel_root 用于子目录页面回指根。"""
     # 导航分两套，不能混用：
     #   nav_mode="branch"  —— 章节导航（运维首页/我的手记/参考复盘/运维体系），
@@ -1437,12 +1500,7 @@ def page(title, body, rel_root="", active="", description="", style="ops-dark",
     if nav_mode == "project":
         nav = [(href, label, "") for href, label in PROJECT_NAV]
     else:
-        nav = [
-            (OPS_SUBDIR + "/index.html", "运维首页", "home"),
-            (OPS_SUBDIR + "/journal.html", "我的手记", "journal"),
-            (OPS_SUBDIR + "/postmortem.html", "参考复盘", "pm"),
-            (OPS_SUBDIR + "/system.html", "运维体系", "ops"),
-        ]
+        nav = _branch_nav(branch)
 
     # nav 里存的是"相对站点根"的路径，渲染时统一加上 rel_root。
     # key 为空表示该项永不当前态（项目导航在首页上不该有当前项）。
@@ -1456,6 +1514,7 @@ def page(title, body, rel_root="", active="", description="", style="ops-dark",
     # 品牌名：首页只显示站名；分支内显示「站名 ‹ 分支名」
     # 为什么这么做：进入分支后，页头要能一眼看出在哪个分支里，
     # 而不是看起来和首页一模一样。
+    binfo = BRANCHES.get(branch, BRANCHES[OPS_SUBDIR])
     if active == "home":
         brand_html = '<a class="brand" href="%sindex.html">%s</a>' % (
             rel_root, esc(SITE_TITLE))
@@ -1463,8 +1522,8 @@ def page(title, body, rel_root="", active="", description="", style="ops-dark",
         brand_html = (
             '<a class="brand brand-parent" href="%sindex.html">%s</a>'
             '<span class="brand-sep">‹</span>'
-            '<span class="brand-branch">运维</span>'
-        ) % (rel_root, esc(SITE_TITLE))
+            '<span class="brand-branch">%s</span>'
+        ) % (rel_root, esc(SITE_TITLE), esc(binfo["name"]))
 
     # 面包屑：工作台 / 运维 / [当前章节]
     # 首页不显示（它就在最顶层，没有上级）
@@ -1473,13 +1532,12 @@ def page(title, body, rel_root="", active="", description="", style="ops-dark",
     else:
         c = ['<nav class="crumbs"><a href="%sindex.html">工作台</a>' % rel_root]
         c.append('<span class="sep">›</span>')
-        c.append('<a href="%s%s/index.html">运维</a>' % (rel_root, OPS_SUBDIR))
-        if active == "journal":
-            c.append('<span class="sep">›</span><span class="cur">我的手记</span>')
-        elif active == "pm":
-            c.append('<span class="sep">›</span><span class="cur">参考复盘</span>')
-        elif active == "ops":
-            c.append('<span class="sep">›</span><span class="cur">运维体系</span>')
+        c.append('<a href="%s%s/index.html">%s</a>'
+                 % (rel_root, branch, esc(binfo["name"])))
+        cur = binfo["crumbs"].get(active)
+        if cur:
+            c.append('<span class="sep">›</span><span class="cur">%s</span>'
+                     % esc(cur))
         c.append('</nav>')
         crumbs = "".join(c)
 
@@ -1621,21 +1679,23 @@ def build_home(pms, journals=None):
 <a class="proj-enter" href="ops/index.html">进入分支<span class="arrow">→</span></a>
 </article>""".format(nj=n_journal, np=n_pm))
 
-    # ── 预留位 ──
-    projects.append("""<article class="proj-card proj-empty">
+    # ── 数据挖掘 ──
+    projects.append("""<article class="proj-card">
 <div class="proj-top">
-<span class="proj-mark">◇</span>
-<span class="proj-state state-idle">预留</span>
+<span class="proj-mark">◆</span>
+<span class="proj-state state-live">已完成</span>
 </div>
-<h2 class="proj-name">NEXT PROJECT</h2>
+<h2 class="proj-name">DATA MINING</h2>
 <p class="proj-intro">
-暂未开始。
+数据挖掘课程的五次实验报告：特征选择、分类、回归、集成与聚类。
+每篇包含实验原理、代码、运行截图与结果分析。
 </p>
 <dl class="proj-stats">
-<div><dt>状态</dt><dd>—</dd></div>
+<div><dt>实验报告</dt><dd>{nd}</dd></div>
+<div><dt>运行截图</dt><dd>{ni}</dd></div>
 </dl>
-<a class="proj-enter proj-enter-off" href="#" tabindex="-1">敬请期待</a>
-</article>""")
+<a class="proj-enter" href="dm/index.html">进入分支<span class="arrow">→</span></a>
+</article>""".format(nd=len(DM_ITEMS), ni=_dm_img_count()))
 
     body = """<section class="hero">
 <div class="hero-inner">
@@ -1663,6 +1723,81 @@ def build_home(pms, journals=None):
     return page("项目工作台", body, active="home", style="anime",
                 nav_mode="project",
                 description="个人项目工作台 —— 记录长期在做的项目与实践过程")
+
+
+def _dm_img_count():
+    """数一下 DM_DIR/img 下有多少张 png。"""
+    n = 0
+    d = os.path.join(DM_DIR, "img")
+    if os.path.isdir(d):
+        for fn in os.listdir(d):
+            if fn.lower().endswith(".png"):
+                n += 1
+    return n
+
+
+def build_dm_index():
+    """数据挖掘分支 —— 概览页"""
+    cards = []
+    for num, name, date, _key in DM_ITEMS:
+        path = os.path.join(DM_DIR, "exp%s.md" % num)
+        lines = 0
+        if os.path.exists(path):
+            lines = len(open(path, encoding="utf-8").read().split("\n"))
+        cards.append("""<div class="card">
+<a class="title" href="exp{num}.html">{name}</a>
+<div class="meta"><span>{date}</span><span>{lines} 行</span></div>
+</div>""".format(num=num, name=esc(name), date=esc(date), lines=lines))
+
+    body = """<h1>数据挖掘</h1>
+<p class="lede">数据挖掘课程的 5 次实验报告。每次包含实验目的、实验原理、
+实验内容与步骤、实验结果与分析、结论与体会，并附运行截图。</p>
+{cards}""".format(cards="".join(cards))
+
+    # active 留空：分支首页要显示「站名 ‹ 数据挖掘」的品牌与面包屑，
+    # 但导航高亮由 nav_active 单独指定（active="home" 会把品牌退回成纯站名）。
+    return page("数据挖掘 · " + SITE_TITLE, body, active="", nav_active="home",
+                branch=DM_SUBDIR, rel_root="../",
+                description="数据挖掘课程实验报告：特征选择、分类、回归、集成、聚类")
+
+
+def build_dm_page(num, name, date, key):
+    """数据挖掘分支 —— 单篇报告"""
+    path = os.path.join(DM_DIR, "exp%s.md" % num)
+    raw = open(path, encoding="utf-8").read()
+    html = M.md2html(M.strip_first_heading(raw))
+
+    idx = [x[0] for x in DM_ITEMS].index(num)
+    if idx > 0:
+        p = DM_ITEMS[idx - 1]
+        prev_html = '<a class="pager-link" href="exp%s.html">← %s</a>' % (
+            p[0], esc(p[1]))
+    else:
+        prev_html = '<span class="pager-disabled">← 上一篇</span>'
+    if idx < len(DM_ITEMS) - 1:
+        nx = DM_ITEMS[idx + 1]
+        next_html = '<a class="pager-link" href="exp%s.html">%s →</a>' % (
+            nx[0], esc(nx[1]))
+    else:
+        next_html = '<span class="pager-disabled">下一篇 →</span>'
+
+    pager = (
+        '<div class="pager">'
+        '<div class="pager-side pager-left">' + prev_html + '</div>'
+        '<div class="pager-mid"><a href="index.html">数据挖掘</a>'
+        '<span class="pager-count">第 %d 篇 / 共 %d 篇</span></div>'
+        '<div class="pager-side pager-right">' + next_html + '</div>'
+        '</div>'
+    )
+
+    body = ('<p class="nav-back"><a href="index.html">← 返回数据挖掘</a></p>\n'
+            + pager + "\n<h1>" + esc(name) + "</h1>\n"
+            + '<div class="metabox"><table><tr><th>实验时间</th><td>'
+            + esc(date) + "</td></tr></table></div>\n"
+            + html + "\n" + pager + "\n")
+
+    return page(name + " · " + SITE_TITLE, body, rel_root="../",
+                active=key, branch=DM_SUBDIR, description=name)
 
 
 def build_ops_home(pms, journals=None):
@@ -2043,7 +2178,7 @@ logs/alerts/                    告警记录</code></pre>
 <tr><td><code>rollback.sh</code></td><td>秒级回滚</td></tr>
 <tr><td><code>traffic-check.sh</code></td><td>流量巡检 + 分级告警</td></tr>
 <tr><td><code>loadtest.py</code></td><td>标准库并发压测器（支持按时长）</td></tr>
-<tr><td><code>md2html.py</code></td><td>Markdown 转换器（含 XSS 防护，55 项测试）</td></tr>
+<tr><td><code>md2html.py</code></td><td>Markdown 转换器（含 XSS 防护、图片与有序列表起始编号，61 项测试）</td></tr>
 </table>
 """
     return page("运维体系 · " + SITE_TITLE, body, active="ops",
@@ -2070,7 +2205,9 @@ def main():
     if os.path.exists(BUILD_DIR):
         shutil.rmtree(BUILD_DIR)
     O = OPS_SUBDIR
-    for d in ["", O, "%s/journal" % O, "%s/postmortem" % O]:
+    D = DM_SUBDIR
+    for d in ["", O, "%s/journal" % O, "%s/postmortem" % O,
+              D, "%s/img" % D]:
         os.makedirs(os.path.join(BUILD_DIR, d), exist_ok=True)
     print("\n输出目录: %s" % BUILD_DIR)
 
@@ -2106,6 +2243,25 @@ def main():
 
     # 运维体系
     emit("%s/system.html" % O, build_ops_page())
+
+    # ══ 数据挖掘分支 ══
+    emit("%s/index.html" % D, build_dm_index())
+    dm_pages = 0
+    for num, name, date, key in DM_ITEMS:
+        emit("%s/exp%s.html" % (D, num), build_dm_page(num, name, date, key))
+        dm_pages += 1
+
+    # 截图是二进制，直接复制，不走 emit 的文本写入
+    dm_imgs = 0
+    src_img = os.path.join(DM_DIR, "img")
+    if os.path.isdir(src_img):
+        dst_img = os.path.join(BUILD_DIR, D, "img")
+        for fn in sorted(os.listdir(src_img)):
+            if not fn.lower().endswith(".png"):
+                continue
+            shutil.copy(os.path.join(src_img, fn), os.path.join(dst_img, fn))
+            dm_imgs += 1
+    print("\n数据挖掘分支: %d 页, %d 张截图" % (dm_pages, dm_imgs))
 
     emit("robots.txt", "User-agent: *\nAllow: /\n")
 

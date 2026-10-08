@@ -107,6 +107,20 @@ def inline(text):
 
     text = re.sub(r"`([^`]+)`", stash, text)
 
+    # 图片 ![alt](url) —— 必须排在链接规则之前。
+    # 否则 ![...](...) 里那截 [...](...) 会先被链接规则吃掉，只剩一个孤零零的 !
+    def img(m):
+        alt, url = m.group(1), m.group(2)
+        low = url.strip().lower()
+        if low.startswith(("javascript:", "data:", "vbscript:")):
+            return alt
+        # url/alt 到这里【已经过全局 escape()】——再套 escape_attr 会把
+        # 已经变成 &amp; 的 & 二次转义成 &amp;amp;。只需补挡引号。
+        return '<img src="%s" alt="%s">' % (url.replace('"', "&quot;"),
+                                            alt.replace('"', "&quot;"))
+
+    text = re.sub(r"!\[([^\]]*)\]\(([^)\s]+)\)", img, text)
+
     # 链接 [文本](url) —— url 也需转义，防 javascript: 之外还需转义引号
     def link(m):
         label, url = m.group(1), m.group(2)
@@ -166,6 +180,23 @@ def md2html(text):
             lang, code = code_blocks[idx]
             cls = ' class="language-%s"' % escape_attr(lang) if lang else ""
             out.append("<pre%s><code%s>%s</code></pre>" % (cls, cls, code))
+            i += 1
+            continue
+
+        # 整行图片 → <figure> + 图注
+        m = re.match(r"^!\[([^\]]*)\]\(([^)\s]+)\)$", stripped)
+        if m:
+            close_list()
+            alt, url = m.group(1), m.group(2)
+            low = url.strip().lower()
+            if low.startswith(("javascript:", "data:", "vbscript:")):
+                out.append("<p>%s</p>" % alt)
+            else:
+                out.append(
+                    '<figure><img src="%s" alt="%s">'
+                    '<figcaption>%s</figcaption></figure>'
+                    % (url.replace('"', "&quot;"),
+                       alt.replace('"', "&quot;"), alt))
             i += 1
             continue
 
@@ -243,13 +274,16 @@ def md2html(text):
             continue
 
         # 有序列表
-        m = re.match(r"^\d+[.)]\s+(.*)$", stripped)
+        m = re.match(r"^(\d+)[.)]\s+(.*)$", stripped)
         if m:
             if list_type != "ol":
                 close_list()
-                out.append("<ol>")
+                # 起始编号不是 1 时必须写成 start="N"。
+                # 否则 HTML 一律从 1 开始数，报告里「8.对比 MLP…」会显示成「1.对比 MLP…」
+                first = int(m.group(1))
+                out.append('<ol start="%d">' % first if first != 1 else "<ol>")
                 list_type = "ol"
-            out.append("<li>%s</li>" % inline(m.group(1)))
+            out.append("<li>%s</li>" % inline(m.group(2)))
             i += 1
             continue
 
@@ -264,6 +298,7 @@ def md2html(text):
                     or re.match(r"^(-{3,}|\*{3,}|_{3,})$", nxt)
                     or re.match(r"^[-*+]\s+", nxt)
                     or re.match(r"^\d+[.)]\s+", nxt)
+                    or re.match(r"^!\[[^\]]*\]\([^)\s]+\)$", nxt)
                     or re.match(r"^&gt;\s?", nxt)):
                 break
             buf.append(nxt)
