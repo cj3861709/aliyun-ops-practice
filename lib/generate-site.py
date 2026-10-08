@@ -40,6 +40,7 @@ BUILD_DIR = os.path.join(LAB, "site", "build")
 # 分支目录 —— 站点是多项目结构，每个项目一个分支
 OPS_SUBDIR = "ops"
 DM_SUBDIR = "dm"
+CC_SUBDIR = "cc"
 # 数据挖掘分支的源材料：5 篇实验报告 Markdown + img/ 下的运行截图
 DM_DIR = os.path.join(LAB, "my-dm")
 
@@ -50,6 +51,19 @@ DM_ITEMS = [
     ("3", "实验三 · 回归", "2026/5/14", "e3"),
     ("4", "实验四 · 集成技术", "2026/6/2", "e4"),
     ("5", "实验五 · 聚类分析", "2026/6/11", "e5"),
+]
+
+# 云计算分支的源材料：6 篇实验报告 Markdown + img/ 下的运行截图
+CC_DIR = os.path.join(LAB, "my-cc")
+
+# 云计算分支的 6 篇报告（编号, 标题, 时间, 导航 key）
+CC_ITEMS = [
+    ("1", "实验一 · Git安装与使用", "2025.09.09", "e1"),
+    ("2", "实验二 · packstack安装OpenStack", "2025.09.29", "e2"),
+    ("3", "实验三 · dacker的安装与应用", "2025.10.27", "e3"),
+    ("4", "实验四 · Kubernetes集群部署", "2025.11.18", "e4"),
+    ("5", "实验五 · 共享式存储的多节点虚拟系统部署", "2025.11.25", "e5"),
+    ("6", "实验六 · 基于hyper-v与DoraCloud的云桌面部署", "2025.12.9", "e6"),
 ]
 
 SITE_TITLE = "项目工作台"
@@ -1719,6 +1733,435 @@ body.distill .visit-widget{
 }
 
 
+/* ===========================================================================
+   工程蓝图风（云计算应用技术实验报告分支 body.blueprint）
+
+   参照 StyleKit「工程蓝图 / Blueprint」硬性提示词：
+     圆角一律 0；零阴影；零毛玻璃；禁止渐变填充与发光
+     20px 图纸网格只作背景纹理，写在 background-image 上
+     直角 + 1px 描边的图纸框感；hover 只改颜色不位移
+     标题/UI/表头/图注/代码/页码走等宽，正文走中文无衬线
+
+   为什么另起一套而不复用 distill：
+     distill 是白底衬线学术风，这套是深蓝图纸面 + 浅图纸面双面混排，
+     页头/页脚/代码块是深色，正文是浅色，视觉完全不同。
+     回滚只需把页面的 style="blueprint" 参数去掉。
+
+   对比度（WCAG 2.1 相对亮度实算，全部 >= 4.5:1，无一需要微调）：
+     --bp-ink       #16304F on #F2F7FC 12.41:1 / on #EAF1F8 11.74:1
+     --bp-ink-60    #44597A on #F2F7FC  6.59:1 / on #EAF1F8  6.24:1
+     --bp-ink-40    #5A6E8C on #F2F7FC  4.82:1 / on #EAF1F8  4.56:1
+     --bp-accent    #1B5FA6 on #F2F7FC  6.02:1 / on #EAF1F8  5.70:1
+     --bp-fg        #FFFFFF on #1E3A5F 11.50:1 / on #16304F 13.38:1
+     --bp-fg-60     #C9D6E4 on #1E3A5F  7.79:1 / on #16304F  9.06:1
+     --bp-fg-40     #A5B0BF on #1E3A5F  5.24:1 / on #16304F  6.09:1
+     --bp-accent-dark #8EC1F0 on #1E3A5F 6.05:1 / on #16304F 7.03:1
+   最紧的一项是 --bp-ink-40 on sheet-2 = 4.56:1，色相未动。
+   网格色只做背景纹理、不作文字色：--bp-grid-dark rgba(255,255,255,.055)
+   叠 chrome 出 #2A4568（1.18:1），--bp-grid-light rgba(30,58,95,.05)
+   叠 sheet 出 #E7EEF4（1.09:1）。
+   =========================================================================== */
+
+:root{
+  --bp-chrome:#1E3A5F;
+  --bp-chrome-2:#16304F;
+  --bp-sheet:#F2F7FC;
+  --bp-sheet-2:#EAF1F8;
+  --bp-ink:#16304F;
+  --bp-ink-60:#44597A;
+  --bp-ink-40:#5A6E8C;
+  --bp-fg:#FFFFFF;
+  --bp-fg-60:#C9D6E4;
+  --bp-fg-40:#A5B0BF;
+  --bp-line:#CBD8E6;
+  --bp-line-dark:rgba(255,255,255,.28);
+  --bp-accent:#1B5FA6;
+  --bp-accent-dark:#8EC1F0;
+  --bp-warn:#8A5A12;
+  --bp-warn-dark:#FFB37A;
+  --bp-crit:#9B2C2C;
+  --bp-crit-dark:#FFB3B3;
+  --bp-grid-dark:rgba(255,255,255,.055);
+  --bp-grid-light:rgba(30,58,95,.05);
+  --bp-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+
+/* 双面混排：body 是浅图纸面（正文阅读面），页头/导航/页脚另铺深蓝图面。
+   网格线只在 background-image 上写，不用简写形式。 */
+body.blueprint{
+  background-color:var(--bp-sheet);
+  background-image:repeating-linear-gradient(to right,var(--bp-grid-light) 0,var(--bp-grid-light) 1px,transparent 1px,transparent 20px),repeating-linear-gradient(to bottom,var(--bp-grid-light) 0,var(--bp-grid-light) 1px,transparent 1px,transparent 20px);
+  background-size:20px 20px;
+  color:var(--bp-ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC","Noto Sans CJK SC",sans-serif;
+  font-size:17px;
+  line-height:1.75;
+}
+
+/* 圆角一律 0：通用规则里 .card / .visit-widget 等处有 10~12px 圆角，
+   这里一刀切平，后面的逐条规则再显式声明一次，好让读的人一眼看到。 */
+body.blueprint *{border-radius:0}
+
+/* 版心：正文列 44rem（比 distill 的 42rem 略宽，实验报告表格多），
+   加回 .wrap 左右各 24px 内边距 → 覆盖其它主题的 880px / 740px。 */
+body.blueprint .wrap{max-width:calc(44rem + 48px)}
+/* 页头/页脚版心单独放宽：分支名「云计算应用技术实验报告」有 10 个字，
+   收在 44rem 正文列里会和导航挤成两行。标题栏宽一点也符合图纸标题栏的观感。 */
+body.blueprint header.site .wrap,body.blueprint footer.site .wrap{
+  max-width:calc(64rem + 48px)
+}
+
+/* ── 页头（深蓝图面 + 20px 网格）── */
+body.blueprint header.site{
+  background-color:var(--bp-chrome);
+  background-image:repeating-linear-gradient(to right,var(--bp-grid-dark) 0,var(--bp-grid-dark) 1px,transparent 1px,transparent 20px),repeating-linear-gradient(to bottom,var(--bp-grid-dark) 0,var(--bp-grid-dark) 1px,transparent 1px,transparent 20px);
+  background-size:20px 20px;
+  border-bottom:1px solid var(--bp-line-dark);
+  padding:22px 0;
+  color:var(--bp-fg);
+}
+body.blueprint header.site .wrap{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 18px}
+/* 页头这几个选择器都长在深蓝面上，但自身不声明底色。
+   站点颜色契约校验是拿「规则自带的不透明底色」当元素底色的，
+   没写底色的会退回按浅色正文面（--bp-sheet）算，把白字判成 1.06:1。
+   这里显式声明一次与父元素同色：既让校验算在正确的面上，
+   也把「这一段属于深面」在源码里写实。 */
+body.blueprint header.site .brand{
+  font-family:var(--bp-mono);
+  background-color:var(--bp-chrome);
+  font-size:1rem;font-weight:600;color:var(--bp-fg);
+  letter-spacing:.01em;
+}
+body.blueprint header.site .brand-parent{color:var(--bp-fg);background-color:var(--bp-chrome)}
+body.blueprint header.site .brand-branch{color:var(--bp-accent-dark);background-color:var(--bp-chrome)}
+body.blueprint header.site .sub{
+  font-family:var(--bp-mono);
+  background-color:var(--bp-chrome);
+  color:var(--bp-fg-60);font-size:.78rem;letter-spacing:.06em;
+}
+
+body.blueprint nav.site{margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
+/* 导航项长在深蓝页头面上。规则里显式写出与父元素同色的底色，
+   既是给读源码的人一个"这段属深面"的实据，也让站点的颜色契约
+   校验算在正确的面上 —— 校验只认规则自带的不透明底色。 */
+body.blueprint nav.site a{
+  font-family:var(--bp-mono);
+  background-color:var(--bp-chrome);
+  color:var(--bp-fg-60);text-decoration:none;font-size:.84rem;
+  position:relative;padding-bottom:2px;
+  transition:color .15s ease-out;
+}
+body.blueprint nav.site a:hover{color:var(--bp-fg)}
+body.blueprint nav.site a.on{background-color:var(--bp-chrome);color:var(--bp-fg);font-weight:600}
+body.blueprint nav.site a::after{background-color:var(--bp-accent-dark)}
+
+/* ── 面包屑 ── */
+body.blueprint .crumbs{
+  font-family:var(--bp-mono);
+  border-bottom-color:var(--bp-line);
+}
+body.blueprint .crumbs a{color:var(--bp-accent);opacity:1}
+body.blueprint .crumbs a:hover{background-color:var(--bp-sheet-2);color:var(--bp-accent);opacity:1}
+body.blueprint .crumbs .cur{color:var(--bp-ink)}
+body.blueprint .crumbs .sep{color:var(--bp-ink-60);opacity:1}
+
+/* ── 正文 ── */
+body.blueprint main{padding:56px 0 84px}
+
+body.blueprint h1{
+  font-family:var(--bp-mono);font-weight:600;
+  font-size:1.85rem;line-height:1.3;letter-spacing:-.01em;
+  margin:0 0 16px;padding:0;color:var(--bp-ink);
+}
+body.blueprint h2{
+  font-family:var(--bp-mono);font-weight:600;
+  font-size:1.28rem;line-height:1.4;
+  margin:40px 0 14px;padding:0 0 7px;
+  border-bottom:1px solid var(--bp-line);color:var(--bp-ink);
+}
+body.blueprint h3{
+  font-family:var(--bp-mono);font-weight:600;
+  font-size:1.08rem;line-height:1.45;
+  margin:28px 0 10px;color:var(--bp-ink);
+}
+/* 正文刻意用中文无衬线，不用等宽（等宽中文长文阅读负担重） */
+body.blueprint p{margin:15px 0;color:var(--bp-ink)}
+body.blueprint .lede{color:var(--bp-ink-60);font-size:1rem;line-height:1.75}
+body.blueprint a{
+  color:var(--bp-accent);text-decoration:none;
+  border-bottom:1px solid rgba(27,95,166,.35);
+}
+body.blueprint a:hover{border-bottom-color:var(--bp-accent)}
+body.blueprint ul,body.blueprint ol{padding-left:1.4em;margin:15px 0}
+body.blueprint li{margin:6px 0;color:var(--bp-ink)}
+body.blueprint blockquote{
+  margin:20px 0;padding:12px 16px;
+  border:1px solid var(--bp-line);border-left:3px solid var(--bp-accent);
+  background-color:var(--bp-sheet-2);
+  color:var(--bp-ink-60);
+}
+body.blueprint hr{border:none;border-top:1px solid var(--bp-line);margin:34px 0}
+
+/* ── 代码与命令块 ──
+   输出块：chrome-2 底 + 1px 深面描边（深色面，与正文浅面区分）
+   命令块（带 language- 围栏）：底再深一档 + 左侧 3px accent-dark 竖条，
+   与输出块可区分——站点校验器会检查这两者不能长一样。 */
+body.blueprint code{
+  font-family:var(--bp-mono);
+  background-color:var(--bp-sheet-2);color:var(--bp-ink);
+  border:1px solid var(--bp-line);
+  padding:1px 5px;font-size:.87em;border-radius:0;
+}
+body.blueprint pre{
+  font-family:var(--bp-mono);
+  background-color:var(--bp-chrome-2);
+  color:var(--bp-fg);
+  border:1px solid var(--bp-line-dark);
+  padding:15px 17px;border-radius:0;
+  overflow-x:auto;font-size:.82rem;line-height:1.7;
+  margin:20px 0;
+}
+/* 底色调成与 pre 同色，而不是 transparent：同样是为了让契约校验
+   认出这段文字落在深面上（transparent 会被当成「没有自带底色」）。 */
+body.blueprint pre code{
+  background-color:var(--bp-chrome-2);background-image:none;
+  color:var(--bp-fg);border:none;padding:0;font-size:inherit;
+}
+body.blueprint pre,body.blueprint pre code{box-shadow:none}
+body.blueprint pre[class*="language-"]{
+  background-color:var(--bp-chrome-2);
+  border:1px solid var(--bp-line-dark);
+  border-left:3px solid var(--bp-accent-dark);
+  padding:13px 17px 13px 15px;
+}
+
+/* ── 图片与图注（实验运行截图）──
+   截图白底，用 1px 图纸线收边；图注等宽小字居中，前缀 ▸ 装饰。 */
+body.blueprint figure{margin:26px 0;padding:0}
+body.blueprint figure img{
+  max-width:100%;height:auto;display:block;margin:0 auto;
+  background-color:#FFFFFF;
+  border:1px solid var(--bp-line);border-radius:0;
+}
+body.blueprint figcaption{
+  margin-top:8px;padding-top:6px;
+  border-top:1px solid var(--bp-line);
+  font-family:var(--bp-mono);
+  font-size:.78rem;line-height:1.6;letter-spacing:.02em;
+  color:var(--bp-ink-40);text-align:center;
+}
+body.blueprint figcaption::before{content:"▸ "}
+/* 报告正文里的截图是 `![](img/x.png)`，没有 alt 文本，md2html 仍会照发
+   <figcaption></figcaption>；这里把它收掉，免得每张图下面挂一条孤零零的
+   前缀符。带 alt 的图不受影响。 */
+body.blueprint figcaption:empty{display:none}
+
+/* ── 表格（网格表格：与另一个分支的 booktabs 只有上下粗线拉开差异）──
+   表头 sheet-2 底 + 等宽小字 + 1px 下边框；单元格 1px 分隔；无斑马纹。 */
+body.blueprint table{
+  width:100%;border-collapse:collapse;font-size:.86rem;margin:22px 0;
+  border:1px solid var(--bp-line);
+  font-family:var(--bp-mono);
+}
+body.blueprint th{
+  font-family:var(--bp-mono);
+  text-align:left;font-weight:600;color:var(--bp-ink);
+  background-color:var(--bp-sheet-2);
+  border-right:1px solid var(--bp-line);
+  border-bottom:1px solid var(--bp-line);
+  padding:8px 12px;
+}
+body.blueprint td{
+  padding:8px 12px;color:var(--bp-ink);
+  border-right:1px solid var(--bp-line);
+  border-bottom:1px solid var(--bp-line);
+  vertical-align:top;
+}
+body.blueprint th:last-child,body.blueprint td:last-child{border-right:none}
+body.blueprint tr:last-child td{border-bottom:none}
+
+/* ── 卡片（概览页的实验列表）──
+   卡面用浅图纸底色，标题条走深蓝图面，是「双面混排」最直接的体现。 */
+body.blueprint .card{
+  border:1px solid var(--bp-line);
+  border-radius:0;padding:0;margin:14px 0;
+  background-color:var(--bp-sheet);
+  transition:border-color .15s ease-out;
+}
+body.blueprint .card:hover{border-color:var(--bp-accent)}
+body.blueprint .card .title{
+  display:block;margin:0;
+  font-family:var(--bp-mono);
+  background-color:var(--bp-chrome);
+  border-bottom:1px solid var(--bp-line-dark);
+  color:var(--bp-fg);
+  padding:12px 18px;
+  font-size:1.02rem;font-weight:600;text-decoration:none;
+}
+body.blueprint .card:hover .title{color:var(--bp-accent-dark)}
+body.blueprint .card .meta{
+  font-family:var(--bp-mono);
+  color:var(--bp-ink-60);font-size:.74rem;letter-spacing:.08em;
+  display:flex;gap:13px;flex-wrap:wrap;
+  padding:12px 18px 14px;
+}
+
+/* ── 统计 ── */
+body.blueprint .stats{display:flex;flex-wrap:wrap;gap:12px;margin:30px 0}
+body.blueprint .stat{
+  border:1px solid var(--bp-line);border-radius:0;
+  background-color:var(--bp-sheet-2);
+  padding:12px 16px;flex:1;min-width:120px;
+}
+body.blueprint .stat b{
+  display:block;font-family:var(--bp-mono);
+  font-size:1.4rem;font-weight:600;color:var(--bp-ink);
+}
+body.blueprint .stat span{
+  font-family:var(--bp-mono);
+  color:var(--bp-ink-60);font-size:.74rem;letter-spacing:.04em;
+}
+
+/* ── 提示块 ── */
+body.blueprint .notice{
+  margin:24px 0;padding:15px 18px;
+  border:1px solid var(--bp-line);border-left:3px solid var(--bp-ink-60);
+  background-color:var(--bp-sheet-2);border-radius:0;
+}
+body.blueprint .notice strong{display:block;margin-bottom:7px;color:var(--bp-ink)}
+body.blueprint .notice p{margin:6px 0;font-size:.89rem;color:var(--bp-ink-60)}
+body.blueprint .notice-info{
+  border-left-color:var(--bp-warn);
+  background-color:rgba(138,90,18,.06);
+}
+body.blueprint .notice-crit{
+  border-left-color:var(--bp-crit);
+  background-color:rgba(155,44,44,.06);
+}
+
+/* ── 元信息框（实验时间。里面是一张单行表，得把网格表格的框线去掉）── */
+body.blueprint .metabox{
+  margin:24px 0;padding:15px 18px;
+  border:1px solid var(--bp-line);border-radius:0;
+  background-color:var(--bp-sheet-2);
+  font-family:var(--bp-mono);
+  font-size:.84rem;
+}
+body.blueprint .metabox dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 17px}
+body.blueprint .metabox dt{color:var(--bp-ink-60);letter-spacing:.08em;font-size:.74rem}
+body.blueprint .metabox dd{margin:0;color:var(--bp-ink)}
+body.blueprint .metabox table{border:none;background-color:transparent;margin:0;font-size:inherit}
+body.blueprint .metabox th{
+  color:var(--bp-ink-60);font-weight:400;background-color:transparent;
+  border:none;padding:0 17px 0 0;
+}
+body.blueprint .metabox td{color:var(--bp-ink);border:none;padding:0}
+
+/* ── 翻页 ── */
+body.blueprint .pager{
+  display:flex;gap:14px;margin-top:56px;
+  padding-top:24px;border-top:1px solid var(--bp-line);
+}
+body.blueprint .pager-side{flex:1 1 40%}
+body.blueprint .pager-mid{
+  font-family:var(--bp-mono);
+  order:-1;flex:1 1 100%;text-align:center;
+  color:var(--bp-ink-60);font-size:.76rem;letter-spacing:.08em;
+  margin-bottom:14px;
+}
+body.blueprint .pager-mid a{display:inline;border-bottom:1px solid rgba(27,95,166,.35)}
+body.blueprint .pager-link{
+  display:block;text-decoration:none;border:none;
+  color:var(--bp-ink);transition:color .15s ease-out;
+}
+body.blueprint .pager-link:hover{color:var(--bp-accent)}
+body.blueprint .pager-left{text-align:left}
+body.blueprint .pager-right{text-align:right}
+body.blueprint .pager-disabled{
+  display:block;font-family:var(--bp-mono);
+  color:var(--bp-ink-40);font-size:.85rem;
+}
+
+/* ── 返回链接 ── */
+body.blueprint .nav-back{
+  display:inline-block;margin-bottom:20px;
+  font-family:var(--bp-mono);
+  color:var(--bp-ink-60);font-size:.8rem;
+  text-decoration:none;border-bottom:none;
+}
+body.blueprint .nav-back:hover{color:var(--bp-accent)}
+
+/* ── 键盘提示 ── */
+body.blueprint .kbd-hint{
+  display:inline-block;margin-top:16px;
+  font-family:var(--bp-mono);
+  color:var(--bp-ink-60);font-size:.75rem;letter-spacing:.04em;
+}
+body.blueprint .kbd-hint kbd{
+  display:inline-block;padding:1px 5px;margin:0 2px;
+  border:1px solid var(--bp-line);border-radius:0;
+  background-color:var(--bp-sheet-2);
+  font-family:var(--bp-mono);font-size:.72rem;color:var(--bp-ink);
+}
+
+/* ── 标签 ── */
+body.blueprint .tag{
+  display:inline-block;
+  font-family:var(--bp-mono);
+  font-size:.7rem;letter-spacing:.08em;
+  padding:1px 7px;border:1px solid currentColor;border-radius:0;
+  color:var(--bp-ink-60);
+}
+body.blueprint .tag.warn{color:var(--bp-warn)}
+body.blueprint .tag.crit{color:var(--bp-crit)}
+body.blueprint .tag.info{color:var(--bp-ink-60)}
+
+/* ── 页脚（深蓝图面，与页头对称）── */
+body.blueprint footer.site{
+  background-color:var(--bp-chrome);
+  background-image:repeating-linear-gradient(to right,var(--bp-grid-dark) 0,var(--bp-grid-dark) 1px,transparent 1px,transparent 20px),repeating-linear-gradient(to bottom,var(--bp-grid-dark) 0,var(--bp-grid-dark) 1px,transparent 1px,transparent 20px);
+  background-size:20px 20px;
+  border-top:1px solid var(--bp-line-dark);
+  padding:26px 0 38px;
+  color:var(--bp-fg-60);font-size:.78rem;line-height:1.9;
+  font-family:var(--bp-mono);
+}
+body.blueprint .filing{margin-top:8px;font-size:.76rem;color:var(--bp-fg-40);background-color:var(--bp-chrome)}
+body.blueprint .filing a{color:var(--bp-fg-60);background-color:var(--bp-chrome);border-bottom:none}
+body.blueprint .filing a:hover{color:var(--bp-accent-dark)}
+
+/* ── 访问统计挂件 ──
+   通用规则是毛玻璃（backdrop-filter + 12px 圆角 + 阴影），
+   蓝图风零阴影零毛玻璃零圆角，这里是必须拍平的地方。 */
+body.blueprint .visit-widget{
+  background-color:var(--bp-chrome);
+  border:1px solid var(--bp-line-dark);
+  border-radius:0;
+  box-shadow:none;
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
+  color:var(--bp-fg);
+  font-family:var(--bp-mono);
+}
+
+/* ── 响应式 ── */
+@media(max-width:600px){
+  body.blueprint main{padding:38px 0 58px}
+  body.blueprint h1{font-size:1.5rem}
+  body.blueprint h2{font-size:1.14rem}
+  body.blueprint h3{font-size:1.02rem}
+  body.blueprint header.site .wrap{gap:4px 14px;padding:0 18px}
+  body.blueprint header.site .brand{font-size:.92rem}
+  body.blueprint nav.site{margin-left:0;width:100%;gap:14px}
+  body.blueprint .pager{flex-wrap:wrap;gap:10px}
+  body.blueprint .pager-side{flex:1 1 100%}
+  body.blueprint .pager-left,body.blueprint .pager-right{text-align:left}
+  body.blueprint figcaption{text-align:left}
+  body.blueprint table{font-size:.8rem}
+  body.blueprint th,body.blueprint td{padding:6px 8px}
+}
+
+
 """.strip()
 
 
@@ -1778,6 +2221,7 @@ def esc(s):
 PROJECT_NAV = [
     (OPS_SUBDIR + "/", "运维实践"),
     (DM_SUBDIR + "/", "数据挖掘"),
+    (CC_SUBDIR + "/", "云计算应用技术实验报告"),
 ]
 
 
@@ -1793,11 +2237,26 @@ BRANCHES = {
         "crumbs": {"e1": "实验一", "e2": "实验二", "e3": "实验三",
                    "e4": "实验四", "e5": "实验五"},
     },
+    CC_SUBDIR: {
+        "name": "云计算应用技术实验报告",
+        "crumbs": {"e1": "实验一", "e2": "实验二", "e3": "实验三",
+                   "e4": "实验四", "e5": "实验五", "e6": "实验六"},
+    },
 }
 
 
 def _branch_nav(subdir):
     """分支内的章节导航。"""
+    if subdir == CC_SUBDIR:
+        return [
+            (CC_SUBDIR + "/index.html", "概览", "home"),
+            (CC_SUBDIR + "/exp1.html", "实验一", "e1"),
+            (CC_SUBDIR + "/exp2.html", "实验二", "e2"),
+            (CC_SUBDIR + "/exp3.html", "实验三", "e3"),
+            (CC_SUBDIR + "/exp4.html", "实验四", "e4"),
+            (CC_SUBDIR + "/exp5.html", "实验五", "e5"),
+            (CC_SUBDIR + "/exp6.html", "实验六", "e6"),
+        ]
     if subdir == DM_SUBDIR:
         return [
             (DM_SUBDIR + "/index.html", "概览", "home"),
@@ -2023,6 +2482,25 @@ def build_home(pms, journals=None):
 <a class="proj-enter" href="dm/index.html">进入分支<span class="arrow">→</span></a>
 </article>""".format(nd=len(DM_ITEMS), ni=_dm_img_count()))
 
+    # ── 云计算应用技术实验报告 ──
+
+    projects.append("""<article class="proj-card">
+<div class="proj-top">
+<span class="proj-mark">◆</span>
+<span class="proj-state state-live">已完成</span>
+</div>
+<h2 class="proj-name">CLOUD COMPUTING</h2>
+<p class="proj-intro">
+云计算应用技术课程的六次实验报告：Git、OpenStack、Docker、
+Kubernetes、共享式存储与云桌面。每篇附命令行与运行截图。
+</p>
+<dl class="proj-stats">
+<div><dt>实验报告</dt><dd>{nc}</dd></div>
+<div><dt>运行截图</dt><dd>{nci}</dd></div>
+</dl>
+<a class="proj-enter" href="cc/index.html">进入分支<span class="arrow">→</span></a>
+</article>""".format(nc=len(CC_ITEMS), nci=_cc_img_count()))
+
     body = """<section class="hero">
 <div class="hero-inner">
 <div class="hero-label">PERSONAL WORKSPACE</div>
@@ -2130,6 +2608,87 @@ def build_dm_page(num, name, date, key):
 
     return page(name + " · " + SITE_TITLE, body, rel_root="../",
                 active=key, branch=DM_SUBDIR, style="distill",
+                description=name)
+
+
+def _cc_img_count():
+    """数一下 CC_DIR/img 下有多少张 png。"""
+    n = 0
+    d = os.path.join(CC_DIR, "img")
+    if os.path.isdir(d):
+        for fn in os.listdir(d):
+            if fn.lower().endswith(".png"):
+                n += 1
+    return n
+
+
+def build_cc_index():
+    """云计算应用技术实验报告 —— 概览页"""
+    cards = []
+    for num, name, date, _key in CC_ITEMS:
+        path = os.path.join(CC_DIR, "exp%s.md" % num)
+        lines = 0
+        if os.path.exists(path):
+            lines = len(open(path, encoding="utf-8").read().split("\n"))
+        cards.append("""<div class="card">
+<a class="title" href="exp{num}.html">{name}</a>
+<div class="meta"><span>{date}</span><span>{lines} 行</span></div>
+</div>""".format(num=num, name=esc(name), date=esc(date), lines=lines))
+
+    body = """<h1>云计算应用技术实验报告</h1>
+<p class="lede">云计算应用技术课程的 6 次实验报告。从 Git 与版本控制起步，
+依次走过 OpenStack 私有云、Docker 容器、Kubernetes 集群、共享式存储与
+Hyper-V 云桌面，每次附完整命令与运行截图。</p>
+{cards}""".format(cards="".join(cards))
+
+    return page("云计算应用技术实验报告 · " + SITE_TITLE, body,
+                active="", nav_active="home",
+                branch=CC_SUBDIR, style="blueprint", rel_root="../",
+                description="云计算应用技术实验报告：Git、OpenStack、Docker、"
+                            "Kubernetes、共享式存储与云桌面")
+
+
+def build_cc_page(num, name, date, key):
+    """云计算应用技术实验报告 —— 单篇报告"""
+    path = os.path.join(CC_DIR, "exp%s.md" % num)
+    raw = open(path, encoding="utf-8").read()
+    raw = M.strip_first_heading(raw)
+    html = M.md2html(raw)
+
+    idx = [x[0] for x in CC_ITEMS].index(num)
+    if idx > 0:
+        p = CC_ITEMS[idx - 1]
+        prev_html = '<a class="pager-link" href="exp%s.html">← %s</a>' % (
+            p[0], esc(p[1]))
+    else:
+        prev_html = '<span class="pager-disabled">← 上一篇</span>'
+    if idx < len(CC_ITEMS) - 1:
+        nx = CC_ITEMS[idx + 1]
+        next_html = '<a class="pager-link" href="exp%s.html">%s →</a>' % (
+            nx[0], esc(nx[1]))
+    else:
+        next_html = '<span class="pager-disabled">下一篇 →</span>'
+
+    counter = '<span class="pager-count">第 %d 篇 / 共 %d 篇</span>' % (
+        idx + 1, len(CC_ITEMS))
+
+    pager = (
+        '<div class="pager">'
+        '<div class="pager-side pager-left">' + prev_html + '</div>'
+        '<div class="pager-mid"><a href="index.html">云计算应用技术实验报告</a>'
+        + counter + '</div>'
+        '<div class="pager-side pager-right">' + next_html + '</div>'
+        '</div>'
+    )
+
+    body = ('<p class="nav-back"><a href="index.html">← 返回云计算应用技术实验报告</a></p>\n'
+            + pager + "\n<h1>" + esc(name) + "</h1>\n"
+            + '<div class="metabox"><table><tr><th>实验时间</th><td>'
+            + esc(date) + "</td></tr></table></div>\n"
+            + html + "\n" + pager + "\n")
+
+    return page(name + " · " + SITE_TITLE, body, rel_root="../",
+                active=key, branch=CC_SUBDIR, style="blueprint",
                 description=name)
 
 
@@ -2539,8 +3098,9 @@ def main():
         shutil.rmtree(BUILD_DIR)
     O = OPS_SUBDIR
     D = DM_SUBDIR
+    C = CC_SUBDIR
     for d in ["", O, "%s/journal" % O, "%s/postmortem" % O,
-              D, "%s/img" % D]:
+              D, "%s/img" % D, C, "%s/img" % C]:
         os.makedirs(os.path.join(BUILD_DIR, d), exist_ok=True)
     print("\n输出目录: %s" % BUILD_DIR)
 
@@ -2595,6 +3155,25 @@ def main():
             shutil.copy(os.path.join(src_img, fn), os.path.join(dst_img, fn))
             dm_imgs += 1
     print("\n数据挖掘分支: %d 页, %d 张截图" % (dm_pages, dm_imgs))
+
+    # ══ 云计算应用技术实验报告分支 ══
+    emit("%s/index.html" % C, build_cc_index())
+    cc_pages = 0
+    for num, name, date, key in CC_ITEMS:
+        emit("%s/exp%s.html" % (C, num), build_cc_page(num, name, date, key))
+        cc_pages += 1
+
+    src_img = os.path.join(CC_DIR, "img")
+    cc_imgs = 0
+    if os.path.isdir(src_img):
+        dst_img = os.path.join(BUILD_DIR, C, "img")
+        for fn in sorted(os.listdir(src_img)):
+            if not fn.lower().endswith(".png"):
+                continue
+            shutil.copy(os.path.join(src_img, fn),
+                        os.path.join(dst_img, fn))
+            cc_imgs += 1
+    print("\n云计算分支: %d 页, %d 张截图" % (cc_pages, cc_imgs))
 
     emit("robots.txt", "User-agent: *\nAllow: /\n")
 

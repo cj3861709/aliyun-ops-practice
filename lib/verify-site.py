@@ -255,6 +255,20 @@ BRANCHES = {
         },
         "prefix": (),
     },
+    "cc": {
+        "labels": ("概览", "实验一", "实验二", "实验三", "实验四",
+                   "实验五", "实验六"),
+        "expect": {
+            "cc/index.html": "概览",
+            "cc/exp1.html": "实验一",
+            "cc/exp2.html": "实验二",
+            "cc/exp3.html": "实验三",
+            "cc/exp4.html": "实验四",
+            "cc/exp5.html": "实验五",
+            "cc/exp6.html": "实验六",
+        },
+        "prefix": (),
+    },
 }
 
 # 工作台首页不在这套体系里：它不对应任何一章，也不该高亮任何一项。
@@ -455,6 +469,21 @@ print("\n── 10. 颜色契约检查 ──")
 #      把导航当前项的亚麻底套到正文小字上算，会凭空造出 1.74:1 的假缺陷。
 
 _CONTRACT_SURFACES = {
+    # 云计算分支的工程蓝图主题。它是全站唯一"双面混排"的主题：
+    # 正文落浅图纸面 --bp-sheet，页头/导航/页脚落深蓝 --bp-chrome，
+    # 代码/命令块再深一档 --bp-chrome-2。
+    #
+    # 这里只登记两个浅面，深面（chrome / chrome-2）刻意不登记 ——
+    # 落深面的文字规则（导航项、品牌名、figcaption 之外的页脚、pre/pre code）
+    # 全都自己声明了同色不透明底色，会被"规则自带底色即该元素底色"那条
+    # 直接算在深面上；若再把 --bp-chrome-2 列进 text 面，
+    # 校验就会拿它去比那些没写底色的浅色文字规则（h1/h2/p/td/figcaption…），
+    # 制造出一批 1.8:1 的假缺陷。
+    "blueprint": {
+        "text": [("页面", "--bp-sheet"),
+                 ("卡片/面板 --bp-sheet-2", "--bp-sheet-2")],
+        "nav":  [("页头/导航 --bp-chrome", "--bp-chrome")],
+    },
     # 数据挖掘分支的浅色主题。次级面只有 #F3F4F6（卡片/代码块底），
     # 导航底是 rgba(31,41,51,.05) 叠在白底上。
     "distill": {
@@ -482,7 +511,7 @@ _CONTRACT_SURFACES = {
     },
 }
 _CONTRACT_PAGE = {"terminal": "--term-bg", "ops-dark": "--dark-bg",
-                  "distill": "--di-bg",
+                  "distill": "--di-bg", "blueprint": "--bp-sheet",
                   "anime": "--cel-paper", "editorial": "--paper"}
 # 豁免项必须写明理由 —— 这些 token 不是"文字颜色"，是装饰。
 _CONTRACT_EXEMPT = {
