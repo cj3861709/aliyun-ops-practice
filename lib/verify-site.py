@@ -455,6 +455,12 @@ print("\n── 10. 颜色契约检查 ──")
 #      把导航当前项的亚麻底套到正文小字上算，会凭空造出 1.74:1 的假缺陷。
 
 _CONTRACT_SURFACES = {
+    # 数据挖掘分支的浅色主题。次级面只有 #F3F4F6（卡片/代码块底），
+    # 导航底是 rgba(31,41,51,.05) 叠在白底上。
+    "distill": {
+        "text": [("页面", "--di-bg"), ("卡片/代码 #F3F4F6", "#F3F4F6")],
+        "nav":  [("页面", "--di-bg"), ("导航底", "rgba(31,41,51,.05)")],
+    },
     "terminal": {
         "text": [("页面", "--term-bg"), ("表格格 #0C1014", "#0C1014"),
                  ("term 块", "rgba(255,255,255,.012)"),
@@ -476,6 +482,7 @@ _CONTRACT_SURFACES = {
     },
 }
 _CONTRACT_PAGE = {"terminal": "--term-bg", "ops-dark": "--dark-bg",
+                  "distill": "--di-bg",
                   "anime": "--cel-paper", "editorial": "--paper"}
 # 豁免项必须写明理由 —— 这些 token 不是"文字颜色"，是装饰。
 _CONTRACT_EXEMPT = {

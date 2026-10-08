@@ -1392,6 +1392,332 @@ body.terminal nav.site a.on{
    当前页已改用实底反白的药丸，这里直接关掉。 */
 body.terminal nav.site a::after{display:none}
 
+/* ===========================================================================
+   学术科普风（数据挖掘分支 body.distill）
+
+   参照 StyleKit「学术科普风 / Distill Style」硬性提示词：
+     正文衬线窄列（42rem 正文度量）、行高 1.75
+     背景纯白，次级面只有 #F3F4F6
+     学术蓝只用于链接与关键强调
+     分割一律 1px hairline；圆角最多 2px；不用阴影
+     表格走 booktabs：只有横线，无竖线无斑马纹
+     figure 在图注上方加一条 hairline，并允许突破版心
+
+   为什么另起一套而不改 ops-dark：
+     运维分支是深色长文（终端底子），数据挖掘分支是实验报告，
+     白底衬线更贴论文体。两套主题互不影响，
+     回滚只需把两个 style="distill" 参数去掉。
+
+   对比度（WCAG，按真实底色复算，全部 >= 4.5:1）：
+     --di-fg      #1F2933 on #FFFFFF 14.76:1 / on #F3F4F6 13.41:1
+     --di-muted   #5F6874 on #FFFFFF  5.65:1 / on #F3F4F6  5.13:1
+     --di-accent  #2268CC on #FFFFFF  5.36:1 / on #F3F4F6  4.87:1
+   注意：StyleKit 原色的 #6B7280（4.39:1）与 #2A7AE2（4.22:1）
+   落在 #F3F4F6 面上不达 AA，这里按同色相压深一档取值。
+   =========================================================================== */
+
+:root{
+  --di-bg:#FFFFFF;
+  --di-panel:#F3F4F6;
+  --di-fg:#1F2933;
+  --di-muted:#5F6874;
+  --di-line:#DDE1E6;
+  --di-accent:#2268CC;
+  --di-warn:#8A5A12;
+  --di-crit:#9B2C2C;
+  --di-serif:"Songti SC","STSong","Noto Serif CJK SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --di-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --di-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+
+body.distill{
+  background:var(--di-bg);
+  color:var(--di-fg);
+  font-family:var(--di-serif);
+  font-size:17px;
+  line-height:1.75;
+}
+
+/* 窄列即尊重：42rem 是正文度量，加回 .wrap 的左右各 24px 内边距 */
+body.distill .wrap{max-width:calc(42rem + 48px)}
+
+/* ── 页头 ── */
+body.distill header.site{
+  border-bottom:1px solid var(--di-line);
+  padding:22px 0;
+}
+body.distill header.site .wrap{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 18px}
+body.distill header.site .brand{
+  font-size:1rem;font-weight:600;color:var(--di-fg);
+  font-family:var(--di-serif);letter-spacing:0;
+}
+body.distill header.site .brand-parent{color:var(--di-fg)}
+body.distill header.site .sub{
+  color:var(--di-muted);font-size:.78rem;letter-spacing:.04em;
+  font-family:var(--di-sans);
+}
+body.distill header.site .brand-branch{color:var(--di-fg)}
+
+body.distill nav.site{margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
+body.distill nav.site a{
+  color:var(--di-muted);text-decoration:none;font-size:.84rem;
+  font-family:var(--di-sans);position:relative;padding-bottom:2px;
+  transition:color .15s ease-out;
+}
+body.distill nav.site a:hover{color:var(--di-accent)}
+body.distill nav.site a.on{color:var(--di-fg);font-weight:600}
+body.distill nav.site a::after{background:var(--di-accent)}
+
+/* ── 面包屑 ── */
+body.distill .crumbs{border-bottom-color:var(--di-line);font-family:var(--di-sans)}
+body.distill .crumbs a{color:var(--di-accent);opacity:1}
+body.distill .crumbs a:hover{background:var(--di-panel);color:var(--di-accent);opacity:1}
+body.distill .crumbs .cur{color:var(--di-fg)}
+body.distill .crumbs .sep{color:var(--di-muted);opacity:1}
+
+/* ── 正文 ── */
+body.distill main{padding:56px 0 84px}
+
+body.distill h1{
+  font-family:var(--di-serif);font-weight:600;
+  font-size:1.9rem;line-height:1.3;letter-spacing:-.01em;
+  margin:0 0 16px;padding:0;color:var(--di-fg);
+}
+body.distill h2{
+  font-family:var(--di-serif);font-weight:600;
+  font-size:1.32rem;line-height:1.4;
+  margin:40px 0 14px;padding:0 0 7px;
+  border-bottom:1px solid var(--di-line);color:var(--di-fg);
+}
+body.distill h3{
+  font-family:var(--di-serif);font-weight:600;
+  font-size:1.1rem;line-height:1.45;
+  margin:28px 0 10px;color:var(--di-fg);
+}
+body.distill p{margin:15px 0;color:var(--di-fg)}
+body.distill .lede{color:var(--di-muted);font-size:1rem;line-height:1.75}
+body.distill a{
+  color:var(--di-accent);text-decoration:none;
+  border-bottom:1px solid rgba(34,104,204,.35);
+}
+body.distill a:hover{border-bottom-color:var(--di-accent)}
+body.distill ul,body.distill ol{padding-left:1.4em;margin:15px 0}
+body.distill li{margin:6px 0;color:var(--di-fg)}
+body.distill blockquote{
+  margin:20px 0;padding:2px 0 2px 16px;
+  border-left:2px solid var(--di-line);
+  color:var(--di-muted);
+}
+body.distill hr{border:none;border-top:1px solid var(--di-line);margin:34px 0}
+
+/* ── 代码 ── */
+body.distill code{
+  background:var(--di-panel);color:var(--di-fg);
+  padding:1px 5px;border-radius:2px;font-size:.87em;
+  font-family:var(--di-mono);
+}
+body.distill pre{
+  background:var(--di-panel);
+  border:1px solid var(--di-line);
+  padding:15px 17px;border-radius:2px;
+  overflow-x:auto;font-size:.82rem;line-height:1.7;
+  margin:20px 0;font-family:var(--di-mono);
+}
+body.distill pre code{background:none;padding:0;color:var(--di-fg);font-size:inherit}
+/* 命令块 / 输出块分离：带语言的围栏贴页面底色 + 2px 蓝左条，
+   与 A1 在运维分支的做法同源，只是换成浅色主题的取值。 */
+body.distill pre[class*="language-"]{
+  background:var(--di-bg);
+  border-left:2px solid var(--di-accent);
+  padding:13px 17px 13px 15px;
+}
+
+/* ── 图片与图注（实验运行截图）──
+   截图本身是白底，用 hairline 收边即可；
+   图注上方一条 hairline，图注以「图 N」开头（md2html 生成）。 */
+body.distill figure{margin:26px 0;padding:0}
+body.distill figure img{
+  max-width:100%;height:auto;display:block;margin:0 auto;
+  background:#fff;border:1px solid var(--di-line);border-radius:2px;
+}
+body.distill figcaption{
+  margin-top:8px;padding-top:6px;
+  border-top:1px solid var(--di-line);
+  font-size:.78rem;line-height:1.6;letter-spacing:.02em;
+  color:var(--di-muted);text-align:left;
+  font-family:var(--di-sans);
+}
+/* 图表突破版心：只在足够宽的视口上向两侧各借 104px，
+   42rem(672px) 正文 → 880px 图面，两侧仍留有余量不会横向溢出。 */
+@media(min-width:1080px){
+  body.distill figure{margin-left:-104px;margin-right:-104px}
+}
+
+/* ── 表格（booktabs：只有横线）── */
+body.distill table{
+  width:100%;border-collapse:collapse;font-size:.86rem;margin:22px 0;
+  border-top:2px solid var(--di-fg);border-bottom:2px solid var(--di-fg);
+  font-family:var(--di-sans);
+}
+body.distill th{
+  text-align:left;font-weight:600;color:var(--di-fg);
+  border-bottom:1px solid var(--di-fg);
+  padding:8px 12px 8px 0;
+}
+body.distill td{
+  padding:8px 12px 8px 0;color:var(--di-fg);
+  vertical-align:top;
+}
+
+/* ── 卡片（概览页的实验列表）── */
+body.distill .card{
+  border:1px solid var(--di-line);
+  border-radius:2px;padding:16px 18px;margin:14px 0;
+  background:var(--di-bg);
+  transition:border-color .15s ease-out;
+}
+body.distill .card:hover{border-color:var(--di-accent)}
+body.distill .card .title{
+  font-family:var(--di-serif);
+  font-size:1.05rem;color:var(--di-fg);text-decoration:none;
+  border:none;display:block;margin-bottom:6px;
+}
+body.distill .card:hover .title{color:var(--di-accent)}
+body.distill .card .meta{
+  color:var(--di-muted);font-size:.74rem;letter-spacing:.08em;
+  display:flex;gap:13px;flex-wrap:wrap;
+  font-family:var(--di-sans);
+}
+
+/* ── 统计 ── */
+body.distill .stats{display:flex;flex-wrap:wrap;gap:12px;margin:30px 0}
+body.distill .stat{
+  border:1px solid var(--di-line);
+  padding:12px 16px;flex:1;min-width:120px;
+}
+body.distill .stat b{
+  display:block;font-family:var(--di-serif);
+  font-size:1.4rem;font-weight:600;color:var(--di-fg);
+}
+body.distill .stat span{
+  color:var(--di-muted);font-size:.74rem;letter-spacing:.04em;
+  font-family:var(--di-sans);
+}
+
+/* ── 提示块 ── */
+body.distill .notice{
+  margin:24px 0;padding:15px 18px;
+  border-left:2px solid var(--di-line);
+  background:var(--di-panel);
+}
+body.distill .notice strong{display:block;margin-bottom:7px;color:var(--di-fg)}
+body.distill .notice p{margin:6px 0;font-size:.89rem;color:var(--di-muted)}
+body.distill .notice-info{
+  border-left-color:var(--di-warn);
+  background:rgba(138,90,18,.05);
+}
+
+/* ── 元信息框（实验时间。里面是一张单行表，得把 booktabs 的上下线去掉）── */
+body.distill .metabox{
+  margin:24px 0;padding:15px 18px;
+  border:1px solid var(--di-line);border-radius:2px;
+  font-size:.84rem;font-family:var(--di-sans);
+}
+body.distill .metabox dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 17px}
+body.distill .metabox dt{color:var(--di-muted);letter-spacing:.08em;font-size:.74rem}
+body.distill .metabox dd{margin:0;color:var(--di-fg)}
+body.distill .metabox table{border:none;margin:0;font-size:inherit}
+body.distill .metabox th{
+  color:var(--di-muted);font-weight:400;border-bottom:none;
+  padding:0 17px 0 0;
+}
+body.distill .metabox td{color:var(--di-fg);padding:0}
+
+/* ── 翻页 ── */
+body.distill .pager{
+  display:flex;gap:14px;margin-top:56px;
+  padding-top:24px;border-top:1px solid var(--di-line);
+}
+body.distill .pager-side{flex:1 1 40%}
+body.distill .pager-mid{
+  order:-1;flex:1 1 100%;text-align:center;
+  color:var(--di-muted);font-size:.76rem;letter-spacing:.08em;
+  margin-bottom:14px;font-family:var(--di-sans);
+}
+body.distill .pager-mid a{display:inline;border-bottom:1px solid rgba(34,104,204,.35)}
+body.distill .pager-link{
+  display:block;text-decoration:none;border:none;
+  color:var(--di-fg);transition:color .15s ease-out;
+}
+body.distill .pager-link:hover{color:var(--di-accent)}
+body.distill .pager-left{text-align:left}
+body.distill .pager-right{text-align:right}
+body.distill .pager-disabled{color:var(--di-muted);font-size:.85rem;display:block}
+
+/* ── 返回链接 ── */
+body.distill .nav-back{
+  display:inline-block;margin-bottom:20px;
+  color:var(--di-muted);font-size:.8rem;
+  text-decoration:none;border-bottom:none;
+  font-family:var(--di-sans);
+}
+body.distill .nav-back:hover{color:var(--di-accent)}
+
+/* ── 键盘提示 ── */
+body.distill .kbd-hint{
+  display:inline-block;margin-top:16px;
+  color:var(--di-muted);font-size:.75rem;letter-spacing:.04em;
+  font-family:var(--di-sans);
+}
+body.distill .kbd-hint kbd{
+  display:inline-block;padding:1px 5px;margin:0 2px;
+  border:1px solid var(--di-line);border-radius:2px;
+  font-family:var(--di-mono);font-size:.72rem;color:var(--di-fg);
+}
+
+/* ── 标签 ── */
+body.distill .tag{
+  display:inline-block;font-size:.7rem;letter-spacing:.08em;
+  padding:1px 7px;border:1px solid currentColor;border-radius:2px;
+  color:var(--di-muted);
+}
+body.distill .tag.warn{color:var(--di-warn)}
+body.distill .tag.crit{color:var(--di-crit)}
+body.distill .tag.info{color:var(--di-muted)}
+
+/* ── 页脚 ── */
+body.distill footer.site{
+  border-top:1px solid var(--di-line);
+  padding:26px 0 38px;
+  color:var(--di-muted);font-size:.78rem;line-height:1.9;
+  font-family:var(--di-sans);
+}
+body.distill .filing{margin-top:8px;font-size:.76rem}
+body.distill .filing a{color:var(--di-muted);border-bottom:none}
+body.distill .filing a:hover{color:var(--di-accent)}
+
+/* ── 访问统计挂件 ──
+   通用规则是毛玻璃（backdrop-filter + 12px 圆角 + 阴影），
+   学术科普风不用玻璃态、圆角上限 2px，这里是唯一需要压平的地方。 */
+body.distill .visit-widget{
+  background:var(--di-bg);
+  border:1px solid var(--di-line);
+  border-radius:2px;
+  box-shadow:none;
+  -webkit-backdrop-filter:none;
+  backdrop-filter:none;
+  color:var(--di-fg);
+}
+
+@media(max-width:600px){
+  body.distill main{padding:38px 0 58px}
+  body.distill h1{font-size:1.6rem}
+  body.distill h2{font-size:1.18rem}
+  body.distill header.site .wrap{gap:4px 14px;padding:0 18px}
+  body.distill nav.site{margin-left:0;width:100%;gap:14px}
+  body.distill .pager{flex-wrap:wrap;gap:10px}
+}
+
 
 """.strip()
 
@@ -1757,7 +2083,7 @@ def build_dm_index():
     # active 留空：分支首页要显示「站名 ‹ 数据挖掘」的品牌与面包屑，
     # 但导航高亮由 nav_active 单独指定（active="home" 会把品牌退回成纯站名）。
     return page("数据挖掘 · " + SITE_TITLE, body, active="", nav_active="home",
-                branch=DM_SUBDIR, rel_root="../",
+                branch=DM_SUBDIR, style="distill", rel_root="../",
                 description="数据挖掘课程实验报告：特征选择、分类、回归、集成、聚类")
 
 
@@ -1765,7 +2091,10 @@ def build_dm_page(num, name, date, key):
     """数据挖掘分支 —— 单篇报告"""
     path = os.path.join(DM_DIR, "exp%s.md" % num)
     raw = open(path, encoding="utf-8").read()
-    html = M.md2html(M.strip_first_heading(raw))
+    raw = M.strip_first_heading(raw)
+    # 第 3 行的「实验名称 / 实验时间」由标题与下方 metabox 承担，正文里去掉
+    raw = re.sub(r"^\*\*实验名称\*\*[^\n]*\n?", "", raw, count=1, flags=re.M)
+    html = M.md2html(raw)
 
     idx = [x[0] for x in DM_ITEMS].index(num)
     if idx > 0:
@@ -1781,11 +2110,14 @@ def build_dm_page(num, name, date, key):
     else:
         next_html = '<span class="pager-disabled">下一篇 →</span>'
 
+    counter = '<span class="pager-count">第 %d 篇 / 共 %d 篇</span>' % (
+        idx + 1, len(DM_ITEMS))
+
     pager = (
         '<div class="pager">'
         '<div class="pager-side pager-left">' + prev_html + '</div>'
         '<div class="pager-mid"><a href="index.html">数据挖掘</a>'
-        '<span class="pager-count">第 %d 篇 / 共 %d 篇</span></div>'
+        + counter + '</div>'
         '<div class="pager-side pager-right">' + next_html + '</div>'
         '</div>'
     )
@@ -1797,7 +2129,8 @@ def build_dm_page(num, name, date, key):
             + html + "\n" + pager + "\n")
 
     return page(name + " · " + SITE_TITLE, body, rel_root="../",
-                active=key, branch=DM_SUBDIR, description=name)
+                active=key, branch=DM_SUBDIR, style="distill",
+                description=name)
 
 
 def build_ops_home(pms, journals=None):
