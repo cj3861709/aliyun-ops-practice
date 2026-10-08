@@ -56,6 +56,10 @@ touch /var/log/quest02.log
 chown chenjin:chenjin /var/log/quest02.log
 ```
 
+```bash
+ls -l /var/log/quest02.log
+```
+
 验证：
 
 ```

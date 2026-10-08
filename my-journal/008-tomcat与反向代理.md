@@ -579,6 +579,14 @@ limit_req  zone=general burst=20 nodelay;
 limit_conn perip 10;
 ```
 
+```bash
+for i in $(seq 1 30); do
+  CODE=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8083/app/)
+  printf "%s " "$CODE"
+done
+echo
+```
+
 **实测 30 次连续请求**：
 
 ```

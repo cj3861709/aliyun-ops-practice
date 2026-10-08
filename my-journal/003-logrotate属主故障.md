@@ -300,6 +300,10 @@ ls -l /var/log/quest02.log
 
 ### 4.2 任务检查结果
 
+```bash
+/root/ops-lab/quests/check-003.sh
+```
+
 任务检查器 10/10 通过：
 
 ```

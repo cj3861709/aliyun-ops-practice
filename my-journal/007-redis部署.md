@@ -318,6 +318,10 @@ redis-cli -a <密码> CONFIG_DANGER_7f3a GET maxmemory
 
 ## 6. 另一个观察：overcommit_memory 警告
 
+```bash
+docker logs redis
+```
+
 **启动日志里有这条警告**：
 
 ```
