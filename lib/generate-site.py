@@ -1610,8 +1610,8 @@ def build_home(pms, journals=None):
 </div>
 <h2 class="proj-name">LINUX OPS LAB</h2>
 <p class="proj-intro">
-2 核 2 GB 云服务器上的运维实践。部署、排障、自动化脚本，
-每篇都有真实命令输出与验证数据。
+一台 2 核 2 GB 云服务器上的运维记录。包含部署、排障与自动化脚本，
+每篇附有实际执行过的命令与输出。
 </p>
 <dl class="proj-stats">
 <div><dt>实操手记</dt><dd>{nj}</dd></div>
@@ -1629,7 +1629,7 @@ def build_home(pms, journals=None):
 </div>
 <h2 class="proj-name">NEXT PROJECT</h2>
 <p class="proj-intro">
-这个位置留给下一个项目。
+暂未开始。
 </p>
 <dl class="proj-stats">
 <div><dt>状态</dt><dd>—</dd></div>
@@ -1641,7 +1641,7 @@ def build_home(pms, journals=None):
 <div class="hero-inner">
 <div class="hero-label">PERSONAL WORKSPACE</div>
 <h1 class="hero-title">项目工作台</h1>
-<p class="hero-desc">长期在做的几件事，各成一块</p>
+<p class="hero-desc">按项目分开记录</p>
 </div>
 </section>
 
@@ -1652,12 +1652,11 @@ def build_home(pms, journals=None):
 <section class="colophon">
 <h2>关于这里</h2>
 <p>
-一个持续更新的个人项目站点。每个项目独立成块，有自己的入口、
-自己的风格，也有自己的记录。
+这是一个个人项目站点。每个项目有独立的入口页面，分别记录各自的实践过程。
 </p>
 <p class="colophon-note">
-部署在一台 2 核 2 GB 云服务器上，由自研 Python 静态生成器构建，
-零第三方依赖。
+部署在一台 2 核 2 GB 云服务器上，由自己写的 Python 静态生成器构建，
+只用标准库。
 </p>
 </section>""".format(cards="".join(projects))
 
@@ -1686,11 +1685,11 @@ def build_ops_home(pms, journals=None):
 <span class="prompt">visitor@ops-lab:<span class="path">~</span>$</span> <span class="cmd">cat</span> <span class="arg">about.txt</span>
 <div style="margin-top:12px">
 一台 <span class="num">2 vCPU / 2 GB</span> 的阿里云 ECS 上，
-从零搭建并运维一个静态技术展示站。
+从零搭建并运维这个静态站点。
 </div>
 <div style="margin-top:10px" class="comment">
-# 重点不在页面本身，而在它背后的运维体系 —— 发布流程、回滚机制、
-# 崩溃自愈、流量防护、监控告警，以及每一项能力的验证证据。
+# 用 nginx 提供访问，发布走软链接原子切换；另外配了回滚、
+# 崩溃自愈、请求限流与监控告警。
 </div>
 </div>""")
 
@@ -1847,7 +1846,7 @@ def build_journal_index(items):
                  title=esc(it["title"]), bits=bits, lines=it["lines"]))
 
     body = """<h1>我的手记</h1>
-<p class="lede">个人实操记录 —— 踩过的坑、排查过程、修复方法。</p>
+<p class="lede">我做过的运维操作记录，每篇包含问题的现象、排查过程与解决办法。</p>
 {cards}""".format(cards="".join(cards))
     return page("我的手记 · " + SITE_TITLE, body, active="journal",
                 description="我自己的运维实操记录与排障手记", rel_root="../")
@@ -1910,9 +1909,8 @@ def build_postmortem_index(pms):
                  title=esc(p["title"]), tag=severity_tag(meta), rows=rows))
 
     body = """<h1>参考复盘</h1>
-<p class="lede">这 8 篇是在搭建本项目过程中产生的技术记录，
-涵盖 nginx 配置、systemd 服务管理、cron 陷阱、安全加固等主题。
-每篇包含完整的现象描述、排查路径与验证方法。</p>
+<p class="lede">这 8 篇是在搭建本项目的过程中产生的技术记录，涵盖 nginx 配置、
+systemd 服务管理、cron 陷阱、安全加固等主题，每篇包含现象、排查过程与验证方法。</p>
 
 <div class="notice">
 <strong>关于这部分的定位</strong>
@@ -1927,7 +1925,7 @@ def build_postmortem_index(pms):
 <p>一份完整的复盘应该包含：现象、排查过程、根因、修复、验证、预防。
 这 8 篇按这个结构写成，可以作为写作模板参考。</p>
 <p>其中有两篇记录了<strong>"先判断错误、后纠正"</strong>的过程——
-这类内容比只写成功结果的记录更有参考价值，因为
+这类过程同样保留在记录里，因为
 <strong>排查过程中走弯路是常态</strong>。</p>
 </div>
 
@@ -1959,7 +1957,7 @@ def build_postmortem_page(p):
 
 def build_ops_page():
     body = """<h1>运维体系</h1>
-<p class="lede">这个站点背后的每一层设计，以及为什么这么选。</p>
+<p class="lede">站点各部分的实现方式与选择理由。</p>
 
 <h2>部署架构</h2>
 <pre><code>/var/www/releases/&lt;时间戳&gt;-&lt;标签&gt;/   不可变发布物，每个版本独立
@@ -1991,10 +1989,9 @@ def build_ops_page():
 <tr><td><code>reload</code></td><td>25,496</td><td><strong>0</strong></td><td>保留</td></tr>
 <tr><td><code>restart</code></td><td>25,612</td><td><strong>408</strong></td><td>更换</td></tr>
 </table>
-<p><code>restart</code> 的 408 个失败（393 个 connection refused +
-15 个 connection reset）不是"顺带发现"，而是<strong>刻意设计的对照组</strong>——
-它证明我的压测方法确实能检测到服务中断，
-所以 <code>reload</code> 的零失败才是可信证据。</p>
+<p><code>restart</code> 的失败数是 408 个（393 个 connection refused +
+15 个 connection reset）。这一组是同时跑的对照：它说明压测方法本身
+能检测到服务中断，因此 <code>reload</code> 那一组的零失败才可采信。</p>
 
 <h2>流量防护（按 20 GB/月 额度设计）</h2>
 <p>CDT 免费额度按地域区分：中国内地 <strong>20 GB/月</strong>，
