@@ -1053,7 +1053,7 @@ footer.site{
 .filing{margin-top:8px;font-size:.78rem}
 /* 两个备案号之间的分隔符：只用 opacity 淡出，不设 color ——
    这样四套主题共用一条规则，且不落入颜色契约检查的扫描面。 */
-.filing-sep{opacity:.45;margin:0 6px}
+.filing-sep{opacity:.75;margin:0 6px}
 .filing a{color:var(--ink-40);border-bottom:none}
 .filing a:hover{color:var(--ink)}
 
