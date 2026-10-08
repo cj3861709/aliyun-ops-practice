@@ -14,11 +14,11 @@
 #      reset 回到起点，hint 给提示（不直接给答案）。
 #
 # 用法:
-#   lab.sh list              列出所有练习
-#   lab.sh show <编号>       查看练习说明
-#   lab.sh check <编号>      运行判分
-#   lab.sh reset <编号>      重置该练习的环境
-#   lab.sh hint <编号>       获取提示（渐进式）
+#   lab list              列出所有练习
+#   lab show <编号>       查看练习说明
+#   lab check <编号>      运行判分
+#   lab reset <编号>      重置该练习的环境
+#   lab hint <编号>       获取提示（渐进式）
 # ==============================================================================
 set -uo pipefail
 
@@ -78,7 +78,7 @@ cmd_list() {
     printf "  %-6s %-34s %s\n" "$id" "$name" "$diff"
   done
   echo
-  echo "  ${C_DIM}用法: lab.sh show <编号> | check <编号> | reset <编号> | hint <编号>${C_RST}"
+  echo "  ${C_DIM}用法: lab show <编号> | check <编号> | reset <编号> | hint <编号>${C_RST}"
   echo
 }
 
@@ -159,12 +159,12 @@ cmd_check() {
     echo
     echo " ${C_DIM}接下来："
     echo "   1. 试着解释每一步「为什么这样做」，而不只是「做了什么」"
-    echo "   2. 用 lab.sh reset $id 重置，不看说明再做一遍"
+    echo "   2. 用 lab reset $id 重置，不看说明再做一遍"
     echo "   3. 把过程中遇到的问题写成复盘（这是简历素材）${C_RST}"
   else
     printf " ${C_WARN}${C_BOLD}通过 %d / 共 %d${C_RST}\n" "$PASS" "$total"
     echo
-    echo " ${C_DIM}提示：用 lab.sh hint $id 获取渐进式提示${C_RST}"
+    echo " ${C_DIM}提示：用 lab hint $id 获取渐进式提示${C_RST}"
   fi
   echo
 
@@ -224,7 +224,7 @@ cmd_hint() {
     echo "${C_WARN}已显示全部 $total 条提示。${C_RST}"
     echo
     echo "${C_DIM}还是没有思路？那说明需要先补基础知识。"
-    echo "建议：lab.sh show $id 重读说明，或直接问我。${C_RST}"
+    echo "建议：lab show $id 重读说明，或直接问我。${C_RST}"
     echo
     # 显示全部
     awk '/^### 提示/{p=1} p' "$f"
@@ -243,7 +243,7 @@ cmd_hint() {
     p { print }
   ' "$f"
   echo
-  echo "${C_DIM}再运行一次 lab.sh hint $id 可获取下一条提示。${C_RST}"
+  echo "${C_DIM}再运行一次 lab hint $id 可获取下一条提示。${C_RST}"
   echo
 }
 
@@ -257,7 +257,7 @@ case "${1:-list}" in
   reset)     cmd_reset "${2:?需要指定练习编号}" ;;
   hint)      cmd_hint "${2:?需要指定练习编号}" ;;
   *)
-    echo "用法: lab.sh {list|show|check|reset|hint} [编号]"
+    echo "用法: lab {list|show|check|reset|hint} [编号]"
     exit 1
     ;;
 esac

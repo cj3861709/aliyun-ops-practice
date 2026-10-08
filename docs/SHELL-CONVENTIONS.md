@@ -162,6 +162,9 @@ CNT=$(tar -tzf "$f" | grep -cF "target" || true)
 **不只验证"正确的能通过"，还要验证"错误的能被检出"。**
 
 ```bash
+# 在仓库根目录下执行
+cd /root/ops-lab
+
 # 验证判分器
 echo "正向测试：用正确配置 → 应通过"
 bash labs/01/check.sh          # 期望退出码 0

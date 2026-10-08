@@ -92,8 +92,10 @@ curl http://127.0.0.1:9090/    # 访问失败
 
 ## 判分
 
+`lab` 已安装到 PATH（`/usr/local/bin/lab`），在任意目录执行：
+
 ```bash
-lab.sh check 02
+lab check 02
 ```
 
 判分会检查：
@@ -128,8 +130,8 @@ lab.sh check 02
 ## 完成后
 
 ```bash
-lab.sh check 02
-lab.sh reset 02     # 重置，再排查一次
+lab check 02
+lab reset 02     # 重置，再排查一次
 ```
 
 **建议做两遍**：第二遍你会快得多，因为你有方法论了。
