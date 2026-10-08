@@ -1191,7 +1191,7 @@ body.editorial code[class*="lang"]{
   header.site .wrap{gap:4px 14px}
   nav.site{margin-left:0;width:100%;gap:14px}
 }
-.visit-widget{position:fixed;top:16px;right:16px;z-index:50;display:flex;align-items:center;padding:7px 12px;border-radius:12px;background:rgba(255,255,255,.16);backdrop-filter:blur(12px) saturate(160%);-webkit-backdrop-filter:blur(12px) saturate(160%);border:1px solid rgba(255,255,255,.24);box-shadow:0 4px 20px rgba(0,0,0,.12);font-size:.72rem;line-height:1.3;color:rgba(255,255,255,.94);font-variant-numeric:tabular-nums;opacity:0;animation:vw-in .45s ease-out .2s forwards;pointer-events:none}
+.visit-widget{position:fixed;top:16px;right:16px;z-index:50;display:flex;flex-direction:column;align-items:center;padding:7px 12px;border-radius:12px;background:rgba(255,255,255,.16);backdrop-filter:blur(12px) saturate(160%);-webkit-backdrop-filter:blur(12px) saturate(160%);border:1px solid rgba(255,255,255,.24);box-shadow:0 4px 20px rgba(0,0,0,.12);font-size:.72rem;line-height:1.3;color:rgba(255,255,255,.94);font-variant-numeric:tabular-nums;opacity:0;animation:vw-in .45s ease-out .2s forwards;pointer-events:none}
 @keyframes vw-in{to{opacity:1}}
 body.anime .visit-widget{background:rgba(26,26,46,.08);border-color:rgba(26,26,46,.14);color:var(--cel-ink);box-shadow:0 4px 18px rgba(26,26,46,.1)}
 body.ops-dark .visit-widget,body.terminal .visit-widget{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.13);color:rgba(255,255,255,.9);box-shadow:0 4px 20px rgba(0,0,0,.3)}
@@ -1199,9 +1199,14 @@ body.ops-dark .visit-widget,body.terminal .visit-widget{background:rgba(255,255,
 .visit-widget .vw-item+.vw-item::before{content:"";position:absolute;left:0;top:14%;height:72%;width:1px;background:currentColor;opacity:.16}
 .visit-widget .vw-num{font-size:.92rem;font-weight:700;letter-spacing:-0.02em;line-height:1.15}
 .visit-widget .vw-label{font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;opacity:.62;margin-top:1px}
+/* 挂件分两行：上行是四个数字，下行写口径与更新时间。
+   时间戳来自 stats/visits.json 的 updated 字段（cron 每 10 分钟刷新），
+   同时说明这几个数字数的是独立访客，不是页面请求数。 */
+.visit-widget .vw-stats{display:flex;align-items:center}
+.visit-widget .vw-time{font-size:.54rem;letter-spacing:.05em;opacity:.62;margin-top:2px;white-space:nowrap}
 .visit-widget.vw-loading .vw-num{opacity:.35}
 .visit-widget.vw-hidden{display:none}
-@media(max-width:620px){.visit-widget{top:8px;right:8px;padding:5px 8px;border-radius:10px}.visit-widget .vw-item{padding:0 5px}.visit-widget .vw-num{font-size:.78rem}.visit-widget .vw-label{font-size:.52rem;letter-spacing:.05em}}
+@media(max-width:620px){.visit-widget{top:8px;right:8px;padding:5px 8px;border-radius:10px}.visit-widget .vw-item{padding:0 5px}.visit-widget .vw-num{font-size:.78rem}.visit-widget .vw-label{font-size:.52rem;letter-spacing:.05em}.visit-widget .vw-time{font-size:.5rem}}
 
 /* ── 面包屑导航 ──
    重做要点：
@@ -2203,6 +2208,12 @@ PAGER_JS = """
       set('vwWeek', d.week || 0);
       set('vwMonth', d.month || 0);
       set('vwTotal', d.total || 0);
+      var t = document.getElementById('vwTime');
+      if (t) {
+        var u = String(d.updated || '');
+        var hhmm = u.length >= 16 ? u.slice(5, 16) : '';
+        t.textContent = hhmm ? ('独立访客 · 更新于 ' + hhmm) : '独立访客';
+      }
       el.classList.remove('vw-loading');
     })
     .catch(function () { el.classList.add('vw-hidden'); });
@@ -2336,7 +2347,7 @@ def page(title, body, rel_root="", active="", description="", style="ops-dark",
 <style>{css}</style>
 </head>
 <body class="{bodyclass}">
-<div class="visit-widget vw-loading" id="visitWidget" data-root="{root}"><div class="vw-item"><span class="vw-num" id="vwToday">-</span><span class="vw-label">今日</span></div><div class="vw-item"><span class="vw-num" id="vwWeek">-</span><span class="vw-label">本周</span></div><div class="vw-item"><span class="vw-num" id="vwMonth">-</span><span class="vw-label">本月</span></div><div class="vw-item"><span class="vw-num" id="vwTotal">-</span><span class="vw-label">累计</span></div></div>
+<div class="visit-widget vw-loading" id="visitWidget" data-root="{root}"><div class="vw-stats"><div class="vw-item"><span class="vw-num" id="vwToday">-</span><span class="vw-label">今日</span></div><div class="vw-item"><span class="vw-num" id="vwWeek">-</span><span class="vw-label">本周</span></div><div class="vw-item"><span class="vw-num" id="vwMonth">-</span><span class="vw-label">本月</span></div><div class="vw-item"><span class="vw-num" id="vwTotal">-</span><span class="vw-label">累计</span></div></div><div class="vw-time" id="vwTime">独立访客</div></div>
 <header class="site"><div class="wrap">
 {brand}
 <span class="sub">{sub}</span>
