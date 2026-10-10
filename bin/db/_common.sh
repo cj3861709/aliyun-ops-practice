@@ -12,7 +12,10 @@
 #   · 密码只存在于 /etc/ops-lab/db.conf（600 权限，仓库外）
 #   · 这样代码可以安全地提交到 Git
 # ==============================================================================
-
+# ── 统一 PATH ──
+# cron 执行用户 crontab 时默认 PATH 是 /usr/bin:/bin，不含 /usr/sbin，
+# 裸调 ss 会静默失败。脚本不应依赖调用方（登录 shell / cron / systemd）的 PATH。
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
 DB_CONF="${DB_CONF:-/etc/ops-lab/db.conf}"
 
 # ── 颜色 ──

@@ -360,11 +360,17 @@ def check_mariadb(rep):
     elif rc == 1:
         rep.add('WARN', '数据库', '有警告项，详见 %s' % DB_CHECK_SCRIPT)
     else:
-        # 提取失败项
+        # 提取失败项；抓不到明细时必须把原因带出来，
+        # 否则告警只剩"检查失败"四个字，无从排查（本次连续 18 天就卡在这里）
         fails = re.findall(r'❌\s*([^\n]+)', out)
         msg = '检查失败'
         if fails:
             msg += '：' + '；'.join(f.strip() for f in fails[:3])
+        elif err.strip():
+            msg += '（退出码 %d，stderr: %s）' % (rc, err.strip().splitlines()[0][:120])
+        else:
+            tail = [ln.strip() for ln in out.splitlines() if ln.strip()][-3:]
+            msg += '（退出码 %d，输出末尾: %s）' % (rc, ' / '.join(tail)[:180])
         rep.add('CRIT', '数据库', msg)
 
     # 安全项：端口必须只绑本机

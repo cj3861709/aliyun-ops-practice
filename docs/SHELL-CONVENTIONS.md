@@ -4,6 +4,21 @@
 每条都是从**真实故障**中总结的，不是教条。
 
 ---
+## 脚本必须自带 PATH
+
+cron 执行用户 crontab 时默认 PATH 是 `/usr/bin:/bin`，**不含 `/usr/sbin`**。
+`ss`、`nginx`、`iptables` 等都在 `/usr/sbin`，裸调会在 cron 里静默失败。
+
+规则：所有脚本在 `set` 之后、第一条命令之前显式声明 PATH
+
+    export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
+
+为什么不用绝对路径：这类故障是一个"类"，不是一个命令。
+补齐 PATH 一次解决同族问题；硬编码路径只是把下一个坑推迟。
+
+背景：`/etc/crontab` 自带 PATH=/sbin:/bin:/usr/sbin:/usr/bin，
+`/etc/cron.d/*` 由管理员显式写了 PATH，**只有用户 crontab 是裸的** —— 
+所以"同一个 PATH 问题，看你从哪个入口进"。
 
 ## 规范 1：优先用 `set -uo pipefail`，谨慎使用 `-e`
 
