@@ -196,7 +196,7 @@ vi /root/ops-lab/quests/log-analysis.py
 python3 -m py_compile /root/ops-lab/quests/log-analysis.py
 
 pip3 install pyflakes
-pyflakes /root/ops-lab/quests/daily-check-framework.py
+pyflakes /root/ops-lab/quests/log-analysis.py
 ```
 
 `py_compile` 只能发现语法错误，拼错的函数名或模块名要等运行时才暴露，

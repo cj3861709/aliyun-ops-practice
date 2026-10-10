@@ -2856,7 +2856,7 @@ def build_ops_home(pms, journals=None):
 
 
 
-def build_journal_index(items):
+def build_journal_index(items, rel_root="../", link_prefix="journal/"):
     """我的手记 —— 列表页"""
     if not items:
         body = """<h1>我的手记</h1>
@@ -2870,7 +2870,7 @@ def build_journal_index(items):
 领取第一个任务，做完后把手记写到 <code>/root/ops-lab/my-journal/</code>。</p>
 </div>"""
         return page("我的手记 · " + SITE_TITLE, body, active="journal",
-                    description="我自己的运维实操记录与排障手记", rel_root="../")
+                    description="我自己的运维实操记录与排障手记", rel_root=rel_root)
 
     cards = []
     for it in items:
@@ -2878,16 +2878,17 @@ def build_journal_index(items):
         bits = "".join("<span>%s</span>" % esc(meta[k])
                        for k in ("日期", "用时", "难度") if k in meta)
         cards.append("""<div class="card">
-<a class="title" href="journal/{num}-{slug}.html">{title}</a>
+<a class="title" href="{link_prefix}{num}-{slug}.html">{title}</a>
 <div class="meta">{bits}<span>{lines} 行</span></div>
 </div>""".format(num=it["num"], slug=esc(it["slug"]),
-                 title=esc(it["title"]), bits=bits, lines=it["lines"]))
+                 title=esc(it["title"]), bits=bits, lines=it["lines"],
+                 link_prefix=link_prefix))
 
     body = """<h1>我的手记</h1>
 <p class="lede">我做过的运维操作记录，每篇包含问题的现象、排查过程与解决办法。</p>
 {cards}""".format(cards="".join(cards))
     return page("我的手记 · " + SITE_TITLE, body, active="journal",
-                description="我自己的运维实操记录与排障手记", rel_root="../")
+                description="我自己的运维实操记录与排障手记", rel_root=rel_root)
 
 
 def build_journal_page(it, prev_it=None, next_it=None, idx=0, total=0):
@@ -3062,6 +3063,64 @@ logs/alerts/                    告警记录</code></pre>
 <code>100.64.0.0/10</code> 内部服务网，不出机房、不计费。
 实测站点出流量只占 eth0 发送量的 5.58%，真实计费数字要看控制台 CDT。</p>
 
+<h2>日常巡检</h2>
+<p>巡检的目的是在问题变成故障之前发现它。下面是每天实际执行的顺序，
+从头做一遍就能确认整台服务器的状态。</p>
+
+<h3>第一步：跑一次全量快照</h3>
+<p><code>healthcheck.sh</code> 把负载、内存、磁盘、inode、失败服务、监听端口、
+占用最高的进程、网卡累计流量、fail2ban、练习环境与已知偏差一次打全，
+并落成一份带时间戳的快照：</p>
+<pre class="language-bash"><code class="language-bash">cd /root/ops-lab
+bash bin/healthcheck.sh
+ls -t logs/health-*.txt | head -n 1
+</code></pre>
+<p>快照文件名是 <code>health-</code> 加年月日时分秒，历史快照留着用于对比。</p>
+
+<h3>第二步：看自动巡检的结果</h3>
+<p>不用手动跑也不会漏：每天 08:00 由 cron 触发
+<code>lib/daily-check.py</code>，把 11 项检查跑一遍，结果写进日志。
+读三个文件就能掌握现状：</p>
+<pre class="language-bash"><code class="language-bash">cat logs/daily-check/latest.txt          # 最近一次巡检全文
+ls -t logs/alerts/ | head -n 5            # 最近的告警文件
+tail -n 50 logs/daily-check/cron.log      # 定时任务的执行记录
+</code></pre>
+<p>11 项检查依次是：磁盘、inode、服务、心跳、内存、负载、流量、数据库、
+数据库备份、Tomcat 代理、目录占用。任何一项越界都会抬高整体等级。</p>
+<p>告警不会重复轰炸：脚本把上一次的等级写在
+<code>logs/daily-check.state</code>，只有等级发生变化时才发邮件。
+所以邮箱里没有新信，不代表巡检没跑 —— 也可能是问题还在、等级没变。</p>
+
+<h3>第三步：核对阈值</h3>
+<p>判断越界用的是固定阈值，不是感觉：</p>
+<pre><code>磁盘使用率      80%
+inode 使用率    80%
+可用内存        200 MB
+系统负载        4.0
+心跳文件年龄    180 秒
+流量占日均预算  50% 警告 / 80% 严重</code></pre>
+<p>这些值写成常量放在 <code>lib/daily-check.py</code> 顶部，要调只改那一处。
+心跳那一项看的是 <code>/var/log/quest02.log</code> 的修改时间，而不是进程是否存在
+—— 进程活着但不再干活，也是一种故障。</p>
+
+<h3>第四步：分项排查</h3>
+<p>整体巡检报出异常后，用对应的单项工具定位：</p>
+<pre class="language-bash"><code class="language-bash">bash bin/f2b-status.sh                # fail2ban 是否在跑、封了多少、增长快不快
+bash bin/deviation-check.sh           # 对照 docs/KNOWN-DEVIATIONS.md 审计已知偏差
+python3 lib/daily-check.py --verbose  # 显示 OK 项的完整巡检
+</code></pre>
+<p><code>--verbose</code> 把通过的检查也打印出来，用来确认「没报错」是真的通过，
+而不是检查项根本没被执行。</p>
+
+<h3>第五步：单独看流量口径</h3>
+<p>服务器按流量计费，所以流量单独看一眼。每小时与每天各跑一次
+<code>bin/traffic-check.sh</code>，报告自动保留最近 48 份：</p>
+<pre class="language-bash"><code class="language-bash">ls -t logs/traffic/traffic-*.txt | head -n 1 | xargs tail -n 20
+</code></pre>
+<p>报告里的「占日均预算」按 <code>20 GB ÷ 30 天 = 682.7 MB/天</code> 折算，
+50% 警告、80% 严重。注意 <code>/proc/net/dev</code> 的计数包含内网流量，
+真实计费口径要看阿里云控制台。</p>
+
 <h2>技术选型理由</h2>
 <table>
 <tr><th>选择</th><th>理由</th></tr>
@@ -3133,6 +3192,9 @@ def main():
 
     # 我的手记（列表 + 内页）
     emit("%s/journal.html" % O, build_journal_index(journals))
+    # 目录索引：让 /ops/journal/ 这个路径本身可访问（否则 nginx 报 403 directory index forbidden）
+    emit("%s/journal/index.html" % O,
+         build_journal_index(journals, rel_root="../../", link_prefix=""))
     for k, it in enumerate(journals):
         prev_it = journals[k - 1] if k > 0 else None
         next_it = journals[k + 1] if k < len(journals) - 1 else None
