@@ -60,6 +60,15 @@ total_links = 0
 for f in html_files:
     base = os.path.dirname(f)
     content = open(f, encoding="utf-8").read()
+    # 链接只可能出现在元素属性里。代码块（pre/code）里的是被展示的源码文本，
+    # 其中的 href=/src= 不是真链接；style/script/注释同理，按规范都不是元素。
+    # （ch8 的 JavaScript 示例里有一行 card.innerHTML = '<img src="' + m.picture + '"…'，
+    #   不剥开就会被当成断链，报出 bd/ch8.html -> ' + m.picture + ' 这种假阳性。）
+    content = re.sub(r"<style\b[^>]*>.*?</style>", "", content, flags=re.S | re.I)
+    content = re.sub(r"<script\b[^>]*>.*?</script>", "", content, flags=re.S | re.I)
+    content = re.sub(r"<!--.*?-->", "", content, flags=re.S)
+    content = re.sub(r"<pre\b[^>]*>.*?</pre>", "", content, flags=re.S | re.I)
+    content = re.sub(r"<code\b[^>]*>.*?</code>", "", content, flags=re.S | re.I)
     for href in LINK_RE.findall(content) + SRC_RE.findall(content):
         if href.startswith(("http://", "https://", "mailto:", "#",
                             "javascript:", "data:")):
@@ -69,6 +78,7 @@ for f in html_files:
         if not os.path.exists(target):
             broken.append((os.path.relpath(f, BUILD), href))
 
+print("  （预处理：已剥掉 style/script/注释与 pre/code 代码块 —— 展示用的代码文本不是链接）")
 if broken:
     for src, href in broken:
         bad("断链: %s -> %s" % (src, href))
@@ -191,7 +201,14 @@ ALLOWED = ["h1","h2","h3","h4","h5","h6","p","ul","ol","li","table","thead",
     "kbd",
     "samp",
     "var",
-    "img"]
+    "img",
+    # 流程图是内联 SVG。配平器靠"自闭合标签"放行 <rect/> 这类元素，
+    # 但第 6 节的残留检查是"白名单里没有就报红"，所以必须在这里登记。
+    "svg",
+    "rect",
+    "text",
+    "line",
+    "polygon"]
 risky = []
 for f in html_files:
     content = open(f, encoding="utf-8").read()
@@ -266,6 +283,26 @@ BRANCHES = {
             "cc/exp4.html": "实验四",
             "cc/exp5.html": "实验五",
             "cc/exp6.html": "实验六",
+        },
+        "prefix": (),
+    },
+    "bd": {
+        "labels": ("概览", "第 1 章", "第 2 章", "第 3 章", "第 4 章",
+                   "第 5 章", "第 6 章", "第 7 章", "第 8 章", "第 9 章",
+                   "第 10 章", "第 11 章"),
+        "expect": {
+            "bd/index.html": "概览",
+            "bd/ch1.html": "第 1 章",
+            "bd/ch2.html": "第 2 章",
+            "bd/ch3.html": "第 3 章",
+            "bd/ch4.html": "第 4 章",
+            "bd/ch5.html": "第 5 章",
+            "bd/ch6.html": "第 6 章",
+            "bd/ch7.html": "第 7 章",
+            "bd/ch8.html": "第 8 章",
+            "bd/ch9.html": "第 9 章",
+            "bd/ch10.html": "第 10 章",
+            "bd/ch11.html": "第 11 章",
         },
         "prefix": (),
     },
@@ -509,10 +546,18 @@ _CONTRACT_SURFACES = {
         "text": [("页面", "--paper"), ("卡片 #ffffff", "#ffffff")],
         "nav":  [("页面", "--paper")],
     },
+    # 大数据平台实训分支的实训讲义风：暖纸底 + 砖红强调，单面浅色。
+    # 页头是纯白 --mn-panel，与页面底 --mn-bg 不同，两个都要登记，
+    # 否则导航小字会被拿去比错底色。
+    "manual": {
+        "text": [("页面", "--mn-bg"), ("卡片/面板 #FFFFFF", "#FFFFFF")],
+        "nav":  [("页面", "--mn-bg"), ("页头 --mn-panel", "--mn-panel")],
+    },
 }
 _CONTRACT_PAGE = {"terminal": "--term-bg", "ops-dark": "--dark-bg",
                   "distill": "--di-bg", "blueprint": "--bp-sheet",
-                  "anime": "--cel-paper", "editorial": "--paper"}
+                  "anime": "--cel-paper", "editorial": "--paper",
+                  "manual": "--mn-bg"}
 # 豁免项必须写明理由 —— 这些 token 不是"文字颜色"，是装饰。
 _CONTRACT_EXEMPT = {
     "--term-line": "ASCII 分隔线，装饰",

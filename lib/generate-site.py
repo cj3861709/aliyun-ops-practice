@@ -66,6 +66,14 @@ CC_ITEMS = [
     ("6", "实验六 · 基于hyper-v与DoraCloud的云桌面部署", "2025.12.9", "e6"),
 ]
 
+# 大数据平台实训分支的源材料：11 章操作手册 Markdown + img/ 下的运行截图。
+# 正文渲染（图片标记、流程图、章内目录）都在 lib/bd_render.py 里，
+# 这里只登记目录与导航，写法与上面三个分支保持一致。
+BD_SUBDIR = "bd"
+BD_DIR = os.path.join(LAB, "my-bd")
+import bd_render as BR
+BD_ITEMS = BR.CH
+
 SITE_TITLE = "项目工作台"
 SITE_SUBTITLE = "个人项目与实践记录"
 
@@ -2169,6 +2177,10 @@ body.blueprint .visit-widget{
 
 """.strip()
 
+# 大数据平台实训分支的主题样式（实训讲义风）。
+# 这段有两百多行，全部塞进上面的常量会让本文件难以阅读，所以单独维护。
+CSS = CSS + "\n" + BR.THEME_CSS
+
 
 # 键盘导航脚本（独立常量：避免裸花括号被 str.format() 误解析）
 PAGER_JS = """
@@ -2233,6 +2245,7 @@ PROJECT_NAV = [
     (OPS_SUBDIR + "/", "运维实践"),
     (DM_SUBDIR + "/", "数据挖掘"),
     (CC_SUBDIR + "/", "云计算应用技术实验报告"),
+    (BD_SUBDIR + "/", "大数据平台实训"),
 ]
 
 
@@ -2253,11 +2266,24 @@ BRANCHES = {
         "crumbs": {"e1": "实验一", "e2": "实验二", "e3": "实验三",
                    "e4": "实验四", "e5": "实验五", "e6": "实验六"},
     },
+    BD_SUBDIR: {
+        "name": "大数据平台实训",
+        "crumbs": {"c1": "第 1 章", "c2": "第 2 章", "c3": "第 3 章",
+                   "c4": "第 4 章", "c5": "第 5 章", "c6": "第 6 章",
+                   "c7": "第 7 章", "c8": "第 8 章", "c9": "第 9 章",
+                   "c10": "第 10 章", "c11": "第 11 章"},
+    },
 }
 
 
 def _branch_nav(subdir):
     """分支内的章节导航。"""
+    if subdir == BD_SUBDIR:
+        nav = [(BD_SUBDIR + "/index.html", "概览", "home")]
+        for _num, _t, _f in BD_ITEMS:
+            nav.append((BD_SUBDIR + "/ch%d.html" % _num,
+                        "第 %d 章" % _num, "c%d" % _num))
+        return nav
     if subdir == CC_SUBDIR:
         return [
             (CC_SUBDIR + "/index.html", "概览", "home"),
@@ -2512,6 +2538,25 @@ Kubernetes、共享式存储与云桌面。每篇附命令行与运行截图。
 <a class="proj-enter" href="cc/index.html">进入分支<span class="arrow">→</span></a>
 </article>""".format(nc=len(CC_ITEMS), nci=_cc_img_count()))
 
+    # ── 大数据平台实训 ──
+    projects.append("""<article class="proj-card">
+<div class="proj-top">
+<span class="proj-mark">◆</span>
+<span class="proj-state state-live">已完成</span>
+</div>
+<h2 class="proj-name">BIG DATA PLATFORM</h2>
+<p class="proj-intro">
+大数据平台实训课程的 11 章操作手册：从虚拟机与 Hadoop 安装，到 Spark
+实验与电影推荐系统，每章按「这是什么 — 前置条件 — 操作步骤 — 结果验证
+— 常见问题」组织，配实验环境截图。
+</p>
+<dl class="proj-stats">
+<div><dt>章节</dt><dd>{nb}</dd></div>
+<div><dt>运行截图</dt><dd>{nbi}</dd></div>
+</dl>
+<a class="proj-enter" href="bd/index.html">进入分支<span class="arrow">→</span></a>
+</article>""".format(nb=len(BD_ITEMS), nbi=BR.img_count()))
+
     body = """<section class="hero">
 <div class="hero-inner">
 <div class="hero-label">PERSONAL WORKSPACE</div>
@@ -2701,6 +2746,22 @@ def build_cc_page(num, name, date, key):
     return page(name + " · " + SITE_TITLE, body, rel_root="../",
                 active=key, branch=CC_SUBDIR, style="blueprint",
                 description=name)
+
+
+def build_bd_index():
+    """大数据平台实训 —— 概览页"""
+    return page("大数据平台实训 · " + SITE_TITLE, BR.index_body(),
+                active="", nav_active="home", branch=BD_SUBDIR,
+                style="manual", rel_root="../",
+                description="大数据平台实训：11 章操作手册，"
+                            "含前置条件、操作步骤、结果验证与常见问题")
+
+
+def build_bd_page(num, title, fn):
+    """大数据平台实训 —— 单章"""
+    return page(title + " · " + SITE_TITLE, BR.render(num, title, fn),
+                rel_root="../", active="c%d" % num, branch=BD_SUBDIR,
+                style="manual", description=title)
 
 
 def build_ops_home(pms, journals=None):
@@ -3169,8 +3230,9 @@ def main():
     O = OPS_SUBDIR
     D = DM_SUBDIR
     C = CC_SUBDIR
+    B = BD_SUBDIR
     for d in ["", O, "%s/journal" % O, "%s/postmortem" % O,
-              D, "%s/img" % D, C, "%s/img" % C]:
+              D, "%s/img" % D, C, "%s/img" % C, B, "%s/img" % B]:
         os.makedirs(os.path.join(BUILD_DIR, d), exist_ok=True)
     print("\n输出目录: %s" % BUILD_DIR)
 
@@ -3247,6 +3309,28 @@ def main():
                         os.path.join(dst_img, fn))
             cc_imgs += 1
     print("\n云计算分支: %d 页, %d 张截图" % (cc_pages, cc_imgs))
+
+    # ══ 大数据平台实训分支 ══
+    emit("%s/index.html" % B, build_bd_index())
+    bd_pages = 0
+    for num, title, fn in BD_ITEMS:
+        emit("%s/ch%d.html" % (B, num), build_bd_page(num, title, fn))
+        bd_pages += 1
+    print("\n大数据平台实训分支: %d 页" % bd_pages)
+
+    # 截图是二进制，直接复制。这些图在本地已经打过码（学号/姓名/班级），
+    # 服务器上不再做图像处理，避免多一份 PIL 依赖。
+    src_img = os.path.join(BD_DIR, "img")
+    bd_imgs = 0
+    if os.path.isdir(src_img):
+        dst_img = os.path.join(BUILD_DIR, B, "img")
+        for fn in sorted(os.listdir(src_img)):
+            if not fn.lower().endswith((".png", ".jpg", ".jpeg")):
+                continue
+            shutil.copy(os.path.join(src_img, fn),
+                        os.path.join(dst_img, fn))
+            bd_imgs += 1
+    print("大数据平台实训分支截图: %d 张" % bd_imgs)
 
     emit("robots.txt", "User-agent: *\nAllow: /\n")
 
