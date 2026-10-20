@@ -545,6 +545,7 @@ def save_level(level):
 def main():
     args = sys.argv[1:]
     no_mail = '--no-mail' in args
+    weekly = '--weekly' in args
     verbose = '--verbose' in args or '-v' in args
 
     # 测试邮件配置
@@ -600,6 +601,26 @@ def main():
             body = text + '\n\n--\n来自阿里云 ECS 日常巡检\n'
             ok, info = notify.send(subject, body)
             print(('邮件: ✅ %s' % info) if ok else ('邮件: ❌ %s' % info))
+
+    else:
+        # 正常状态也要有出口：周报存活报告 + 故障恢复通知
+        last = load_last_level()
+        if no_mail:
+            print('（--no-mail）未发送邮件')
+        elif notify is None:
+            print('（无法导入 notify 模块）未发送邮件')
+        elif weekly:
+            subject = '[周报] 服务器巡检周报 (%s)' % datetime.now().strftime('%m-%d')
+            body = text + '\n\n--\n本周存活报告：收到这封邮件说明告警链路本身是通的。\n'
+            ok, info = notify.send(subject, body)
+            print(('周报: ✅ %s' % info) if ok else ('周报: ❌ %s' % info))
+        elif last is not None and last != 'OK':
+            subject = '[已恢复] 服务器巡检恢复正常 (%s)' % datetime.now().strftime('%m-%d %H:%M')
+            body = text + '\n\n--\n上一轮状态: %s，现已恢复正常。\n' % last
+            ok, info = notify.send(subject, body)
+            print(('邮件: ✅ %s' % info) if ok else ('邮件: ❌ %s' % info))
+        else:
+            print('（状态正常，无需发信）')
 
     save_level(rep.level())
     return rep.code()
