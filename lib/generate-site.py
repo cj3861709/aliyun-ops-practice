@@ -3111,12 +3111,12 @@ limit_req_status 429;</code></pre>
 </table>
 
 <h2>监控与告警</h2>
-<pre><code>lib/traffic-monitor.py          日志分析引擎（纯标准库）
-bin/traffic-check.sh            阈值判定 + 告警
-/etc/cron.d/ops-lab-traffic     每小时巡检
-/etc/cron.d/ops-lab-daily-report 每日日报
-logs/traffic/                   历史报告（自动保留 48 份）
-logs/alerts/                    告警记录</code></pre>
+<pre><code>lib/traffic-monitor.py            日志分析引擎（纯标准库）
+bin/traffic-check.sh              阈值判定 + 告警
+/etc/cron.d/ops-lab-traffic       每小时巡检
+/etc/cron.d/ops-lab-traffic-daily 每日存档（不发邮件）
+logs/traffic/                     历史报告（自动保留 48 份）
+logs/alerts/                      告警记录</code></pre>
 <p>阈值来自额度换算而非拍脑袋：<code>20GB ÷ 30 天 = 682.7 MB/天</code>，
 50% 警告、80% 严重。</p>
 <p><strong>测量局限</strong>（这点很重要）：<code>/proc/net/dev</code> 的计数
