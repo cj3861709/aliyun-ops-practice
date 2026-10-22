@@ -3009,7 +3009,7 @@ def build_postmortem_index(pms):
                  title=esc(p["title"]), tag=severity_tag(meta), rows=rows))
 
     body = """<h1>参考复盘</h1>
-<p class="lede">这 8 篇是在搭建本项目的过程中产生的技术记录，涵盖 nginx 配置、
+<p class="lede">这 {n} 篇是在搭建本项目的过程中产生的技术记录，涵盖 nginx 配置、
 systemd 服务管理、cron 陷阱、安全加固等主题，每篇包含现象、排查过程与验证方法。</p>
 
 <div class="notice">
@@ -3023,13 +3023,13 @@ systemd 服务管理、cron 陷阱、安全加固等主题，每篇包含现象�
 <div class="notice notice-info">
 <strong>为什么保留这些样例</strong>
 <p>一份完整的复盘应该包含：现象、排查过程、根因、修复、验证、预防。
-这 8 篇按这个结构写成，可以作为写作模板参考。</p>
+这 {n} 篇按这个结构写成，可以作为写作模板参考。</p>
 <p>其中有两篇记录了<strong>"先判断错误、后纠正"</strong>的过程——
 这类过程同样保留在记录里，因为
 <strong>排查过程中走弯路是常态</strong>。</p>
 </div>
 
-{cards}""".format(cards="".join(cards))
+{cards}""".format(cards="".join(cards), n=len(cards))
     return page("参考复盘 · " + SITE_TITLE, body, active="pm",
                 description="运维技术记录：nginx 配置、systemd 管理、安全加固", rel_root="../")
 
