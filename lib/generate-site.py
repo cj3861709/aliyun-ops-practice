@@ -2368,6 +2368,8 @@ def page(title, body, rel_root="", active="", description="", style="ops-dark",
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="{root}favicon.ico" sizes="any">
+<link rel="icon" href="{root}favicon.svg" type="image/svg+xml">
 <title>{title}</title>
 <meta name="description" content="{desc}">
 <style>{css}</style>
@@ -2397,6 +2399,24 @@ def page(title, body, rel_root="", active="", description="", style="ops-dark",
            nav=navhtml, crumbs=crumbs, body=body, js=PAGER_JS,
            icp=ICP_NUMBER, icp_url=ICP_URL,
            mps=MPS_NUMBER, mps_url=MPS_URL, bodyclass=style)
+
+
+SITE_URL = "https://myzhiwei.xyz"
+
+
+def count_checks():
+    """巡检项个数：从 lib/daily-check.py 里数 check_* 函数，不在页面上写死。
+
+    上一版把「13」直接写进首页，而脚本里实际只有 10 个 check_* 函数；
+    写死的数字不会跟着代码变 —— 和参考复盘列表里那句「这 8 篇」是同一个坑。
+    """
+    path = os.path.join(LAB, "lib", "daily-check.py")
+    try:
+        with open(path, encoding="utf-8") as f:
+            src = f.read()
+    except (OSError, IOError):
+        return 0
+    return len(re.findall(r"^def check_[a-z0-9_]+\(", src, re.M))
 
 
 def load_journals():
@@ -2479,6 +2499,7 @@ def build_home(pms, journals=None):
     """
     n_journal = len(journals) if journals else 0
     n_pm = len(pms)
+    n_checks = count_checks()
 
     projects = []
 
@@ -2496,10 +2517,10 @@ def build_home(pms, journals=None):
 <dl class="proj-stats">
 <div><dt>实操手记</dt><dd>{nj}</dd></div>
 <div><dt>故障复盘</dt><dd>{np}</dd></div>
-<div><dt>巡检项</dt><dd>13</dd></div>
+<div><dt>巡检项</dt><dd>{nc}</dd></div>
 </dl>
 <a class="proj-enter" href="ops/index.html">进入分支<span class="arrow">→</span></a>
-</article>""".format(nj=n_journal, np=n_pm))
+</article>""".format(nj=n_journal, np=n_pm, nc=n_checks))
 
     # ── 数据挖掘 ──
     projects.append("""<article class="proj-card">
@@ -3208,6 +3229,109 @@ python3 lib/daily-check.py --verbose  # 显示 OK 项的完整巡检
                 description="运维体系设计：部署架构、发布流程、限流、监控告警与技术选型", rel_root="../")
 
 
+def build_404():
+    """404 页。nginx 的 error_page 指向它，所以它必须能独立成页：
+    浏览器地址栏里仍是那个不存在的 URL，因此站内链接一律用绝对地址，
+    否则 /ops/xxx 下的 404 会把相对链接解析到 /ops/ 里去。"""
+    body = """<section class="hero">
+<div class="hero-inner">
+<div class="hero-label">404 / NOT FOUND</div>
+<h1 class="hero-title">这个地址没有对应页面</h1>
+<p class="hero-desc">链接可能写错了，或者页面改名后旧地址没有保留。下面这些入口都在。</p>
+</div>
+</section>
+
+<section class="colophon">
+<h2>回到有内容的地方</h2>
+<p><a href="%(site)s/">工作台（首页）</a> · <a href="%(site)s/ops/index.html">运维实践</a> · <a href="%(site)s/dm/index.html">数据挖掘</a> · <a href="%(site)s/cc/index.html">云计算</a> · <a href="%(site)s/bd/index.html">大数据平台实训</a></p>
+<p class="colophon-note">如果这个地址是你刚刚点进来的，问题在链接本身，不在服务器。</p>
+</section>""" % {"site": SITE_URL}
+    return page("页面不存在 · 项目工作台", body, active="home", style="anime",
+                nav_mode="project",
+                description="页面不存在 —— 该地址没有对应内容")
+
+
+def build_50x():
+    """5xx 页。nginx 的 error_page 500 502 503 504 指向它。"""
+    body = """<section class="hero">
+<div class="hero-inner">
+<div class="hero-label">50X / SERVER ERROR</div>
+<h1 class="hero-title">服务暂时没法回应这个请求</h1>
+<p class="hero-desc">这是服务器端的问题，不是你的操作。稍等一会儿再刷新；如果一直这样，就是我这边要修的。</p>
+</div>
+</section>
+
+<section class="colophon">
+<h2>可以试的</h2>
+<p><a href="%(site)s/">回工作台</a> · <a href="%(site)s/ops/index.html">运维实践</a></p>
+<p class="colophon-note">nginx 的 500 / 502 / 503 / 504 都会落到这一页。</p>
+</section>""" % {"site": SITE_URL}
+    return page("服务暂时不可用 · 项目工作台", body, active="home", style="anime",
+                nav_mode="project",
+                description="服务暂时不可用 —— 服务器端问题，稍后重试")
+
+
+def build_favicon_svg():
+    return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">'
+            '<rect width="16" height="16" rx="3" fill="#101826"/>'
+            '<path d="M8 2.4 13.6 8 8 13.6 2.4 8Z" fill="#22c55e"/>'
+            '</svg>')
+
+
+def build_favicon_ico():
+    """手写 16x16 32bpp 的 ICO（标准库就够，不引 PIL）。
+    ICO = 6 字节目录 + 16 字节条目 + 40 字节 DIB 头 + 像素 + AND 掩码。"""
+    W = H = 16
+
+    def u16(v):
+        return (v & 0xFFFF).to_bytes(2, "little")
+
+    def u32(v):
+        return (v & 0xFFFFFFFF).to_bytes(4, "little")
+
+    bits = b""
+    for y in range(H - 1, -1, -1):           # 像素自下而上
+        for x in range(W):
+            d = abs(x - 7.5) + abs(y - 7.5)  # 菱形：到中心的曼哈顿距离
+            if d <= 6.2:
+                r, g, b, a = 34, 197, 94, 255      # 主绿 #22c55e
+            elif d <= 7.2:
+                r, g, b, a = 21, 128, 61, 255      # 描边 #15803d
+            else:
+                r, g, b, a = 0, 0, 0, 0            # 透明
+            bits += bytes((b, g, r, a))            # BGRA
+    and_mask = b"\x00" * ((W // 8) * H)
+    img = b"".join([
+        u32(40), u32(W), u32(H * 2), u16(1), u16(32),
+        u32(0), u32(len(bits) + len(and_mask)), u32(0), u32(0), u32(0), u32(0),
+    ]) + bits + and_mask
+    return ((u16(0) + u16(1) + u16(1))
+            + bytes((W, H, 0, 0)) + u16(1) + u16(32)
+            + u32(len(img)) + u32(22) + img)
+
+
+def build_sitemap(items):
+    """给爬虫一张地图。错误页和 sitemap 自己不进去；
+    文件名里有中文，必须百分号编码，否则部分爬虫会当成非法 URL 丢掉。"""
+    import datetime as _dt
+    from urllib.parse import quote
+    skip = ("404.html", "50x.html", "sitemap.xml")
+    lastmod = _dt.date.today().isoformat()
+    out = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for relpath, _size in items:
+        if relpath in skip or not relpath.endswith(".html"):
+            continue
+        if relpath.endswith("index.html"):
+            loc = SITE_URL + "/" + relpath[:-len("index.html")]
+        else:
+            loc = SITE_URL + "/" + relpath
+        out.append("<url><loc>%s</loc><lastmod>%s</lastmod></url>"
+                   % (quote(loc, safe=":/"), lastmod))
+    out.append("</urlset>")
+    return "\n".join(out) + "\n"
+
+
 def main():
     print("=" * 60)
     print(" 静态站点生成")
@@ -3332,7 +3456,28 @@ def main():
             bd_imgs += 1
     print("大数据平台实训分支截图: %d 张" % bd_imgs)
 
-    emit("robots.txt", "User-agent: *\nAllow: /\n")
+    # 错误页：nginx 的 error_page 指向这两个文件。以前只在 nginx.conf 里配了
+    # error_page，文件从来没生成过，访客拿到的其实是 nginx 自带的 146 字节白页。
+    emit("404.html", build_404())
+    emit("50x.html", build_50x())
+
+    # 图标：favicon.ico 给老浏览器直连（浏览器会隐式请求根目录的 /favicon.ico），
+    # favicon.svg 给现代浏览器，矢量不失真
+    def emit_bytes(relpath, data):
+        full = os.path.join(BUILD_DIR, relpath)
+        d = os.path.dirname(full)
+        if d:
+            os.makedirs(d, exist_ok=True)
+        with open(full, "wb") as f:
+            f.write(data)
+        written.append((relpath, len(data)))
+
+    emit_bytes("favicon.ico", build_favicon_ico())
+    emit("favicon.svg", build_favicon_svg())
+
+    emit("robots.txt", "User-agent: *\nAllow: /\n\nSitemap: %s/sitemap.xml\n"
+         % SITE_URL)
+    emit("sitemap.xml", build_sitemap(list(written)))
 
     print("\n生成文件:")
     total = 0

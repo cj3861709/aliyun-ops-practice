@@ -184,6 +184,9 @@ print("\n── 6. 未转义残留检查 ──")
 ALLOWED = ["h1","h2","h3","h4","h5","h6","p","ul","ol","li","table","thead",
            "tbody","tr","th","td","pre","code","blockquote","hr","strong",
            "em","a","html","head","meta","title","style","body","header",
+           # link 是 <head> 里的空元素（图标、样式表）。不加进白名单，
+           # 第 6 节的残留检查会把合法的 <link rel="icon" …> 当成未转义注入。
+           "link",
            "nav","main","footer","div","span","br","b","i","small",
     "section",
     "article",
@@ -314,6 +317,11 @@ ALL_BRANCH_LABELS = tuple(
     _x for _b in BRANCHES.values() for _x in _b["labels"])
 
 
+# 根目录除了工作台，还有两个"任何 URL 下都可能被渲染"的错误页。
+# 它们不属于任何分支，也不该高亮章节导航 —— 和 index.html 同类。
+ROOT_PAGES = ("index.html", "404.html", "50x.html")
+
+
 def branch_of(rel):
     """按路径首段判分支；工作台首页没有首段，返回 None。"""
     if "/" not in rel:
@@ -348,19 +356,19 @@ for f in sorted(html_files):
     # 教训（第 12 类：结构分成了两层，验证规则只按一层写）——
     # 首页曾经直接套用分支的章节导航，而 EXPECT_ON 又把它写成预期，
     # 于是全绿放行。现在改成从层级上判：工作台的导航里不得出现任何章节项。
-    if rel == "index.html":
+    if rel in ROOT_PAGES:
         leaked = [x for x in labels if x in ALL_BRANCH_LABELS]
         if leaked:
-            bad("index.html（工作台）出现了分支内的章节导航：%s" % ",".join(leaked))
+            bad("%s（根目录页）出现了分支内的章节导航：%s" % (rel, ",".join(leaked)))
             nav_bad += 1
             continue
-        if not labels:
+        if rel == "index.html" and not labels:
             bad("index.html（工作台）的导航为空，找不到项目入口")
             nav_bad += 1
             continue
         if on:
-            bad("index.html（工作台）的导航不应高亮任何一项，实为：%s"
-                % ",".join(on))
+            bad("%s（根目录页）的导航不应高亮任何一项，实为：%s"
+                % (rel, ",".join(on)))
             nav_bad += 1
         continue
 
@@ -388,8 +396,8 @@ for f in sorted(html_files):
         nav_bad += 1
 
 if nav_bad == 0:
-    ok("导航层级正确：分支内 %d 个页面各高亮 1 项，工作台不高亮任何一项"
-       % (len(html_files) - 1))
+    ok("导航层级正确：分支内 %d 个页面各高亮 1 项，%d 个根目录页不高亮任何一项"
+       % (len(html_files) - len(ROOT_PAGES), len(ROOT_PAGES)))
 
 # ---- 主题覆盖 ----
 print("\n── 8. 主题覆盖检查 ──")
