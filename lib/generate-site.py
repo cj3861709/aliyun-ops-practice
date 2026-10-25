@@ -2418,6 +2418,36 @@ def count_checks():
         return 0
     return len(re.findall(r"^def check_[a-z0-9_]+\(", src, re.M))
 
+CHECK_LABELS = {
+    "check_disk": "磁盘",
+    "check_inode": "inode",
+    "check_services": "服务",
+    "check_heartbeat": "心跳",
+    "check_memory": "内存",
+    "check_load": "负载",
+    "check_traffic": "流量",
+    "check_mariadb": "数据库",
+    "check_tomcat_proxy": "Tomcat 代理",
+    "check_disk_detail": "目录占用",
+    "check_scripts_selfcontained": "脚本自洽",
+}
+
+
+def check_names():
+    """巡检项名字与顺序：取 lib/daily-check.py 里 main() 的调用顺序，不在页面上写死。
+
+    顺序来自 main() 里的 check_xxx(rep) 调用；中文名靠 CHECK_LABELS 映射，
+    新增检查项忘了登记就退回函数名 —— 宁可难看，也不要页面写错。
+    """
+    path = os.path.join(LAB, "lib", "daily-check.py")
+    try:
+        with open(path, encoding="utf-8") as f:
+            src = f.read()
+    except (OSError, IOError):
+        return []
+    names = re.findall(r"^\s+(check_[a-z0-9_]+)\(rep\)", src, re.M)
+    return [CHECK_LABELS.get(n, n) for n in names]
+
 
 def load_journals():
     """读取用户手记（my-journal/*.md）。跳过 _ 开头的模板文件。"""
@@ -2878,7 +2908,7 @@ def build_ops_home(pms, journals=None):
         ("秒级回滚", "版本目录不覆盖，回滚只需把软链接指回去并 reload"),
         ("崩溃自愈", "发现系统自带 unit 缺失 Restart 策略，用 drop-in 修复并以 SIGKILL 验证"),
         ("流量防护", "基于 20 GB/月免费额度设计：nginx 限流限连 + fail2ban 联动"),
-        ("监控告警", "每日巡检 13 项 + 邮件告警（等级变化时发送，避免重复）"),
+        ("监控告警", "每日巡检 " + str(count_checks()) + " 项 + 邮件告警（等级变化时发送，避免重复）"),
         ("数据库", "容器化部署，命名卷持久化，自动备份，崩溃恢复验证数据无丢失"),
     ]
     cap_rows = "\n".join(
@@ -3137,7 +3167,9 @@ bin/traffic-check.sh              阈值判定 + 告警
 /etc/cron.d/ops-lab-traffic       每小时巡检
 /etc/cron.d/ops-lab-traffic-daily 每日存档（不发邮件）
 logs/traffic/                     历史报告（自动保留 48 份）
-logs/alerts/                      告警记录</code></pre>
+logs/alerts/                      告警记录
+bin/db/verify-backup.sh           每天 03:40 在一次性容器里试恢复最新备份
+logs/db-backup/                   备份文件与每日校验日志</code></pre>
 <p>阈值来自额度换算而非拍脑袋：<code>20GB ÷ 30 天 = 682.7 MB/天</code>，
 50% 警告、80% 严重。</p>
 <p><strong>测量局限</strong>（这点很重要）：<code>/proc/net/dev</code> 的计数
@@ -3151,7 +3183,7 @@ logs/alerts/                      告警记录</code></pre>
 
 <h3>第一步：跑一次全量快照</h3>
 <p><code>healthcheck.sh</code> 把负载、内存、磁盘、inode、失败服务、监听端口、
-占用最高的进程、网卡累计流量、fail2ban、练习环境与已知偏差一次打全，
+占用最高的进程、网卡累计流量、fail2ban、备份数量、练习环境与已知偏差一次打全，
 并落成一份带时间戳的快照：</p>
 <pre class="language-bash"><code class="language-bash">cd /root/ops-lab
 bash bin/healthcheck.sh
@@ -3161,14 +3193,13 @@ ls -t logs/health-*.txt | head -n 1
 
 <h3>第二步：看自动巡检的结果</h3>
 <p>不用手动跑也不会漏：每天 08:00 由 cron 触发
-<code>lib/daily-check.py</code>，把 11 项检查跑一遍，结果写进日志。
+<code>lib/daily-check.py</code>，把 __NC__ 项检查跑一遍，结果写进日志。
 读三个文件就能掌握现状：</p>
 <pre class="language-bash"><code class="language-bash">cat logs/daily-check/latest.txt          # 最近一次巡检全文
 ls -t logs/alerts/ | head -n 5            # 最近的告警文件
 tail -n 50 logs/daily-check/cron.log      # 定时任务的执行记录
 </code></pre>
-<p>11 项检查依次是：磁盘、inode、服务、心跳、内存、负载、流量、数据库、
-数据库备份、Tomcat 代理、目录占用。任何一项越界都会抬高整体等级。</p>
+<p>__CHECKLIST__</p>
 <p>告警不会重复轰炸：脚本把上一次的等级写在
 <code>logs/daily-check.state</code>，只有等级发生变化时才发邮件。
 所以邮箱里没有新信，不代表巡检没跑 —— 也可能是问题还在、等级没变。</p>
@@ -3180,7 +3211,8 @@ inode 使用率    80%
 可用内存        200 MB
 系统负载        4.0
 心跳文件年龄    180 秒
-流量占日均预算  50% 警告 / 80% 严重</code></pre>
+流量占日均预算  50% 警告 / 80% 严重
+数据库备份年龄  48 小时</code></pre>
 <p>这些值写成常量放在 <code>lib/daily-check.py</code> 顶部，要调只改那一处。
 心跳那一项看的是 <code>/var/log/quest02.log</code> 的修改时间，而不是进程是否存在
 —— 进程活着但不再干活，也是一种故障。</p>
@@ -3221,10 +3253,18 @@ python3 lib/daily-check.py --verbose  # 显示 OK 项的完整巡检
 <tr><td><code>deploy.sh</code></td><td>原子发布（9 步 + 自动回滚）</td></tr>
 <tr><td><code>rollback.sh</code></td><td>秒级回滚</td></tr>
 <tr><td><code>traffic-check.sh</code></td><td>流量巡检 + 分级告警</td></tr>
-<tr><td><code>loadtest.py</code></td><td>标准库并发压测器（支持按时长）</td></tr>
-<tr><td><code>md2html.py</code></td><td>Markdown 转换器（含 XSS 防护、图片与有序列表起始编号，61 项测试）</td></tr>
+<tr><td><code>db/verify-backup.sh</code></td><td>每天在一次性容器里试恢复最新数据库备份并校验</td></tr>
+<tr><td><code>test-narrow-path.sh</code></td><td>窄 PATH 下跑两个回滚脚本，缺命令必须拒绝执行</td></tr>
+<tr><td><code>lib/loadtest.py</code></td><td>标准库并发压测器（支持按时长）</td></tr>
+<tr><td><code>lib/md2html.py</code></td><td>Markdown 转换器（含 XSS 防护、图片与有序列表起始编号，61 项测试）</td></tr>
 </table>
 """
+    n_checks = count_checks()
+    names = check_names()
+    body = body.replace("__NC__", str(n_checks))
+    body = body.replace("__CHECKLIST__",
+                        "%d 项检查依次是：%s。任何一项越界都会抬高整体等级。"
+                        % (n_checks, "、".join(names)))
     return page("运维体系 · " + SITE_TITLE, body, active="ops",
                 description="运维体系设计：部署架构、发布流程、限流、监控告警与技术选型", rel_root="../")
 

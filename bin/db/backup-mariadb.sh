@@ -11,6 +11,11 @@
 # ==============================================================================
 set -uo pipefail
 
+# 自带 PATH：cron / at 给的环境不可信，这里不依赖调用方。
+# 缺了 /usr/sbin 时 mariadb / mariadb-dump 找不到，备份会"跑完却没有产物"，
+# 而脚本仍然退出 0 —— 与复盘 009 是同一类失败。
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=_common.sh
 source "$SCRIPT_DIR/_common.sh"
