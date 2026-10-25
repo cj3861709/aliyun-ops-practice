@@ -84,6 +84,24 @@ if [ "$DRY_RUN" -eq 1 ]; then
     grep -oE 'CREATE TABLE `[^`]+`' "$BACKUP_FILE" 2>/dev/null | sed 's/^/  /' || echo "  （未找到）"
     exit 0
 fi
+# ── 护栏：挡住「整实例」备份直接灌进生产 ──
+# 为什么要这段：默认备份用 --all-databases 打的，含 mysql 系统库的 28 条 DROP TABLE。
+# 下面「执行恢复」那段是不带 --one-database 的裸导入 —— 等于在生产的 MariaDB 上重灌
+# mysql.user / mysql.db / mysql.global_priv（权限表），并重建备份时刻已存在的
+# 其它库（blog / test / p / ps）。验证段只看库名列表，看不出来，所以必须在这里拦。
+if [ "${ALLOW_FULL:-0}" != "1" ] && grep -q 'CREATE DATABASE .*`mysql`' "$BACKUP_FILE"; then
+    echo
+    echo "${C_BAD}❌ 这是一份「整实例」备份（含 mysql 系统库），拒绝直接恢复${C_RST}"
+    echo "   直接导入会覆盖权限表并重建其它库，不是「回滚数据」而是「回滚整台实例」。"
+    echo
+    echo "   只恢复单个库（推荐）："
+    echo "     docker exec -i \${DB_CONTAINER} mariadb -uroot -p\"\${DB_ROOT_PASS}\" \\"
+    echo "       --one-database ${DB_NAME:-opslab} < $(basename "$BACKUP_FILE")"
+    echo
+    echo "   确实要整实例恢复（清楚后果再执行）："
+    echo "     ALLOW_FULL=1 $0 $*"
+    exit 78
+fi
 
 # ── 二次确认 ──
 if [ "$CONFIRM" -eq 0 ]; then
@@ -110,8 +128,10 @@ fi
 # ── 执行恢复 ──
 echo
 echo "【2】执行恢复"
-if docker exec -i "${DB_CONTAINER}" mariadb -uroot -p"${DB_ROOT_PASS}" < "$BACKUP_FILE" 2>&1 \
-   | grep -v "Using a password on the command line"; then
+OUT=$(docker exec -i "${DB_CONTAINER}" mariadb -uroot -p"${DB_ROOT_PASS}" < "$BACKUP_FILE" 2>&1)   # 先收完整输出
+RC=$?                                                                                              # 退出码来自 mariadb，不是 grep
+printf '%s\n' "$OUT" | grep -v "Using a password on the command line" | sed 's/^/  /'             # 只用来过滤显示
+if [ "$RC" -eq 0 ]; then
     echo "  ${C_OK}✅ 导入完成${C_RST}"
 else
     echo "  ${C_BAD}❌ 导入失败${C_RST}"
